@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -24,7 +25,10 @@ import {
   Activity,
   Cloud,
   CheckCircle2,
-  Menu
+  Menu,
+  ShieldCheck,
+  Globe,
+  Cpu
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +36,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import { signInAnonymously } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -104,7 +108,7 @@ export default function StudioDashboard() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const { toast } = useToast();
   
-  const { user, loading } = useUser();
+  const { user } = useUser();
   const auth = useAuth();
   const db = useFirestore();
 
@@ -136,7 +140,6 @@ export default function StudioDashboard() {
 
   useEffect(() => {
     setMounted(true);
-    // Initialize theme based on state
     const html = document.documentElement;
     if (isDarkMode) {
       html.classList.add('dark');
@@ -342,6 +345,34 @@ export default function StudioDashboard() {
           </div>
         )}
       </main>
+
+      {/* Footer Status Bar */}
+      <footer className="h-8 md:h-10 border-t bg-card/60 backdrop-blur-3xl px-4 md:px-8 flex items-center justify-between shrink-0 z-50 overflow-hidden">
+        <div className="flex items-center gap-4 md:gap-8">
+           <div className="flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse" />
+              <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">Neural Engine: Synced</span>
+           </div>
+           <div className="hidden sm:flex items-center gap-2 border-l border-white/10 pl-8">
+              <ShieldCheck className="h-3 w-3 text-primary" />
+              <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">IKS Protocol: 01-Active</span>
+           </div>
+        </div>
+
+        <div className="flex items-center gap-4 md:gap-8">
+           <div className="hidden md:flex items-center gap-2">
+              <Globe className="h-3 w-3 text-secondary" />
+              <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">Region: IN-CENTRAL-01</span>
+           </div>
+           <div className="flex items-center gap-2 group cursor-help">
+              <div className="h-4 w-4 rounded bg-primary/10 flex items-center justify-center">
+                 <Cpu className="h-2.5 w-2.5 text-primary" />
+              </div>
+              <span className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] text-primary/80 group-hover:text-primary transition-colors">Bharata AI Infrastructure</span>
+           </div>
+        </div>
+      </footer>
+
       <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
