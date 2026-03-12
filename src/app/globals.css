@@ -4,31 +4,26 @@
 
 @layer base {
   :root {
-    --background: 240 14% 15%;
+    --background: 240 14% 10%;
     --foreground: 0 0% 98%;
-    --card: 240 14% 18%;
+    --card: 240 14% 12%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 14% 15%;
+    --popover: 240 14% 10%;
     --popover-foreground: 0 0% 98%;
     --primary: 245 56% 70%;
     --primary-foreground: 240 14% 10%;
-    --secondary: 240 14% 25%;
+    --secondary: 240 14% 18%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 14% 20%;
-    --muted-foreground: 240 5% 70%;
+    --muted: 240 14% 15%;
+    --muted-foreground: 240 5% 65%;
     --accent: 215 81% 60%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 14% 22%;
-    --input: 240 14% 22%;
+    --border: 240 14% 18%;
+    --input: 240 14% 18%;
     --ring: 245 56% 70%;
     --radius: 0.75rem;
-    --chart-1: 245 56% 70%;
-    --chart-2: 215 81% 60%;
-    --chart-3: 173 58% 39%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
   }
 }
 
@@ -37,26 +32,40 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-body antialiased;
   }
+}
+
+.glass-panel {
+  @apply bg-card/40 backdrop-blur-xl border border-white/5 shadow-2xl;
+}
+
+.workspace-panel {
+  @apply h-full overflow-hidden flex flex-col transition-all duration-300;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.5; }
+  50% { transform: scale(1.05); opacity: 0.2; }
+  100% { transform: scale(0.95); opacity: 0.5; }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2s infinite ease-in-out;
 }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  @apply bg-muted;
+  @apply bg-transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-border rounded-full hover:bg-muted-foreground/30 transition-colors;
+  @apply bg-primary/20 rounded-full hover:bg-primary/40 transition-colors;
 }
 
-.glass-panel {
-  @apply bg-card/50 backdrop-blur-md border border-white/5;
-}
-
-.workspace-panel {
-  @apply h-full overflow-hidden flex flex-col;
+.glow-text {
+  text-shadow: 0 0 15px hsl(var(--primary) / 0.5);
 }
