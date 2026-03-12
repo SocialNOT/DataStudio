@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
 import UploadPanel from './UploadPanel';
@@ -30,19 +30,29 @@ export type PipelineState = {
 
 export default function StudioDashboard() {
   const isMobile = useIsMobile();
+  const [mounted, setMounted] = useState(false);
   const [state, setState] = useState<PipelineState>({
     rawText: '',
     processedText: '',
     chunks: [],
     status: 'idle',
-    logs: [{ id: '1', timestamp: new Date(), message: 'System initialized. Knowledge Ingestion Engine online.', type: 'info' }],
+    logs: [], // Initialize empty to avoid server/client mismatch
   });
+
+  useEffect(() => {
+    setMounted(true);
+    // Add initial log on client only
+    setState(prev => ({
+      ...prev,
+      logs: [{ id: '1', timestamp: new Date(), message: 'System initialized. Knowledge Ingestion Engine online.', type: 'info' }]
+    }));
+  }, []);
 
   const updateState = (updates: Partial<PipelineState>) => {
     setState((prev) => {
       const newState = { ...prev, ...updates };
       
-      // Automatic logging for status changes
+      // Automatic logging for status changes (Client-side only)
       if (updates.status && updates.status !== prev.status) {
         const statusMsg = `Pipeline status transitioned to: ${updates.status.toUpperCase()}`;
         newState.logs = [
@@ -121,7 +131,9 @@ export default function StudioDashboard() {
                   <div className={`absolute left-[-4.5px] top-1 h-2 w-2 rounded-full border-2 border-background shadow-sm ${
                     log.type === 'ai' ? 'bg-primary animate-pulse' : log.type === 'error' ? 'bg-destructive' : log.type === 'success' ? 'bg-green-500' : 'bg-muted-foreground'
                   }`} />
-                  <p className="text-[9px] font-code text-muted-foreground/60">{log.timestamp.toLocaleTimeString()}</p>
+                  <p className="text-[9px] font-code text-muted-foreground/60">
+                    {mounted ? log.timestamp.toLocaleTimeString() : ''}
+                  </p>
                   <p className="text-[11px] font-body leading-tight text-foreground/80 mt-1">{log.message}</p>
                 </div>
               ))}
