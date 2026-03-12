@@ -28,17 +28,20 @@ import {
   Network,
   ShieldCheck,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Menu
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import { signInAnonymously } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { cn } from '@/lib/utils';
 
 export type LogEntry = {
   id: string;
@@ -102,6 +105,7 @@ export default function StudioDashboard() {
   const isMobile = useIsMobile();
   const [mounted, setMounted] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('ingest');
   const [isDarkMode, setIsDarkMode] = useState(true);
   const { toast } = useToast();
   
@@ -198,7 +202,7 @@ export default function StudioDashboard() {
     
     try {
       const snapshotRef = collection(db, 'datasets', state.datasetId, 'backups');
-      await addDoc(snapshotRef, {
+      addDoc(snapshotRef, {
         id: Date.now().toString(),
         datasetId: state.datasetId,
         timestamp: serverTimestamp(),
@@ -209,6 +213,12 @@ export default function StudioDashboard() {
           version: state.version
         },
         checksum: Math.random().toString(36).substring(7)
+      }).catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: snapshotRef.path,
+          operation: 'create',
+          requestResourceData: { datasetId: state.datasetId }
+        }));
       });
 
       addLog("Disaster Recovery Snapshot persisted to cloud vault.", "success");
@@ -273,30 +283,30 @@ export default function StudioDashboard() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground selection:bg-primary/20">
-      <header className="flex h-16 items-center justify-between border-b bg-card/60 px-8 backdrop-blur-2xl shrink-0 z-50">
-        <div className="flex items-center gap-6">
+      <header className="flex h-16 items-center justify-between border-b bg-card/60 px-4 md:px-8 backdrop-blur-2xl shrink-0 z-50">
+        <div className="flex items-center gap-4 md:gap-6">
           <div className="relative group cursor-pointer" onClick={() => updateState({ viewMode: 'metrics' })}>
             <div className="absolute inset-0 animate-pulse-ring rounded-xl bg-primary/20 group-hover:bg-primary/40 transition-all duration-500" />
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-white shadow-2xl shadow-primary/40 group-hover:scale-105 transition-transform active:scale-95">
-              <BrainCircuit className="h-6 w-6" />
+            <div className="relative flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-white shadow-2xl shadow-primary/40 group-hover:scale-105 transition-transform active:scale-95">
+              <BrainCircuit className="h-5 w-5 md:h-6 md:w-6" />
             </div>
           </div>
           <div className="flex flex-col">
-            <h1 className="font-headline text-lg font-black tracking-tight flex items-center gap-2">
+            <h1 className="font-headline text-sm md:text-lg font-black tracking-tight flex items-center gap-2">
               Mitsara <span className="text-primary glow-text tracking-tighter italic">Studio</span>
-              <Badge variant="outline" className="h-4 text-[7px] border-primary/20 bg-primary/5 text-primary ml-2 uppercase font-black tracking-[0.2em]">PRO ENGINE</Badge>
+              <Badge variant="outline" className="hidden md:inline-flex h-4 text-[7px] border-primary/20 bg-primary/5 text-primary ml-2 uppercase font-black tracking-[0.2em]">PRO ENGINE</Badge>
             </h1>
-            <div className="flex items-center gap-2.5 mt-1 opacity-70">
-              <Layers className="h-3 w-3 text-primary" />
-              <span className="text-[9px] text-muted-foreground uppercase tracking-[0.2em] font-black">
+            <div className="flex items-center gap-2.5 mt-0.5 md:mt-1 opacity-70">
+              <Layers className="h-2.5 w-2.5 text-primary" />
+              <span className="text-[8px] md:text-[9px] text-muted-foreground uppercase tracking-[0.2em] font-black truncate max-w-[120px]">
                 {state.datasetName} <span className="text-primary font-code opacity-80 ml-1">v{state.version}</span>
               </span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
-           <div className="hidden xl:flex items-center gap-8 px-6 py-2 rounded-2xl bg-black/20 border border-white/5 shadow-inner">
+        <div className="flex items-center gap-2 md:gap-6">
+           <div className="hidden lg:flex items-center gap-8 px-6 py-2 rounded-2xl bg-black/20 border border-white/5 shadow-inner">
               <Metric label="Chunks" value={state.chunks.length} icon={<Database className="h-3 w-3" />} />
               <Metric label="QA Shards" value={state.qaPairs.length} icon={<Terminal className="h-3 w-3" />} />
               <Metric 
@@ -306,106 +316,109 @@ export default function StudioDashboard() {
               />
            </div>
 
-           <div className="flex items-center gap-1.5 bg-black/30 p-1.5 rounded-xl border border-white/5 shadow-lg">
-              <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:text-primary transition-colors" onClick={() => setIsDarkMode(!isDarkMode)}>
-                {isDarkMode ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-              </Button>
-              <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground relative hover:text-primary transition-colors">
-                <Bell className="h-4 w-4" />
-                <span className="absolute top-2.5 right-2.5 h-2 w-2 bg-primary rounded-full border-2 border-background shadow-lg" />
+           <div className="flex items-center gap-1.5 bg-black/30 p-1 rounded-xl border border-white/5">
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setIsDarkMode(!isDarkMode)}>
+                {isDarkMode ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
               </Button>
               <Button 
                 size="icon" 
                 variant="ghost" 
-                className="h-9 w-9 text-muted-foreground hover:text-primary transition-all group" 
+                className="h-8 w-8 text-muted-foreground hover:text-primary transition-all group" 
                 onClick={() => setSettingsOpen(true)}
               >
-                <Settings className="h-4 w-4 group-hover:rotate-90 transition-transform duration-500" />
+                <Settings className="h-3.5 w-3.5 group-hover:rotate-90 transition-transform duration-500" />
               </Button>
            </div>
 
            {loading ? (
-             <div className="h-10 w-32 bg-muted/20 animate-pulse rounded-xl border border-white/5" />
+             <div className="h-9 w-24 bg-muted/20 animate-pulse rounded-xl" />
            ) : user ? (
-             <div className="flex items-center gap-3">
-               <div className="flex gap-2">
-                 <Button variant="outline" size="sm" className="h-10 text-[9px] font-black uppercase tracking-widest gap-2 bg-accent/5 border-accent/20 hover:bg-accent/10 transition-all" onClick={handleCreateSnapshot}>
-                   <Cloud className="h-3.5 w-3.5" /> Snapshot
-                 </Button>
-                 <Button variant="ghost" size="sm" className="h-10 text-[9px] font-black uppercase tracking-widest gap-2 text-primary hover:bg-primary/10 transition-all" onClick={handleSaveToCloud}>
-                   <Cloud className="h-3.5 w-3.5" /> Synchronize
+             <div className="flex items-center gap-2">
+               <div className="hidden sm:flex gap-1.5">
+                 <Button variant="ghost" size="sm" className="h-8 text-[8px] font-black uppercase tracking-widest gap-2 text-primary hover:bg-primary/10" onClick={handleSaveToCloud}>
+                   <Cloud className="h-3 w-3" /> Sync
                  </Button>
                </div>
-               <div className="flex items-center gap-4 pl-6 border-l border-white/10 group cursor-pointer" onClick={() => setSettingsOpen(true)}>
-                 <div className="text-right hidden sm:block">
-                   <p className="text-[8px] font-black text-muted-foreground uppercase leading-none tracking-widest mb-1">Status</p>
-                   <p className="text-xs font-black text-green-500 uppercase tracking-tighter italic">Secured</p>
-                 </div>
-                 <div className="h-10 w-10 rounded-xl border-2 border-primary/20 bg-primary/10 flex items-center justify-center font-bold text-primary text-[11px] shadow-xl group-hover:scale-105 transition-transform duration-300">
+               <div className="flex items-center gap-3 pl-3 md:pl-6 md:border-l border-white/10 group cursor-pointer" onClick={() => setSettingsOpen(true)}>
+                 <div className="h-8 w-8 md:h-10 md:w-10 rounded-xl border-2 border-primary/20 bg-primary/10 flex items-center justify-center font-bold text-primary text-[10px] md:text-[11px] shadow-xl group-hover:scale-105 transition-transform">
                    {user.displayName?.[0] || user.email?.[0] || 'A'}
                  </div>
                </div>
              </div>
            ) : (
-             <Button variant="outline" size="sm" className="h-10 px-6 text-[10px] font-black uppercase tracking-[0.2em] gap-3 bg-primary/10 border-primary/30 hover:bg-primary/20 hover:scale-105 transition-all shadow-xl shadow-primary/10" onClick={handleSignIn}>
-               <LogIn className="h-4 w-4" /> Node Authorization
+             <Button variant="outline" size="sm" className="h-9 px-3 md:px-6 text-[9px] font-black uppercase tracking-[0.2em] gap-2 bg-primary/10 border-primary/30 hover:bg-primary/20" onClick={handleSignIn}>
+               <LogIn className="h-3.5 w-3.5" /> Auth
              </Button>
            )}
         </div>
       </header>
 
-      <div className="grid flex-1 grid-cols-12 overflow-hidden">
-        <div className="col-span-10 grid grid-cols-4 gap-px bg-white/5 overflow-hidden">
-          <div className="workspace-panel bg-background/30 hover:bg-background/40">
-             <PanelHeader icon={<Upload className="h-4 w-4" />} title="1. Ingestion Engine" />
-             <UploadPanel state={state} updateState={updateState} />
-          </div>
-          <div className="workspace-panel bg-background/30 hover:bg-background/40">
-             <PanelHeader icon={<Cog className="h-4 w-4" />} title="2. Intelligence Layer" />
-             <ProcessingPanel state={state} updateState={updateState} />
-          </div>
-          <div className="workspace-panel bg-background/30 hover:bg-background/40 border-l border-white/5 col-span-1">
-             <PanelHeader icon={<Eye className="h-4 w-4" />} title="3. Curation Hub" />
-             <PreviewPanel state={state} updateState={updateState} />
-          </div>
-          <div className="workspace-panel bg-background/30 hover:bg-background/40 border-l border-white/5">
-             <PanelHeader icon={<Share2 className="h-4 w-4" />} title="4. Deployment Vault" />
-             <ExportPanel state={state} updateState={updateState} />
-          </div>
-        </div>
-
-        <div className="col-span-2 border-l border-white/5 bg-black/20 flex flex-col overflow-hidden">
-          <div className="h-12 px-5 border-b border-white/5 bg-black/10 flex items-center justify-between">
-            <h2 className="text-[10px] font-black uppercase tracking-[0.25em] flex items-center gap-3">
-              <History className="h-4 w-4 text-primary" /> Session Record
-            </h2>
-            <Badge variant="outline" className="text-[9px] font-code h-5 px-2 border-primary/30 text-primary bg-primary/5">
-              {state.logs.length}
-            </Badge>
-          </div>
-          <ScrollArea className="flex-1 p-5">
-            <div className="space-y-6">
-              {state.logs.map((log) => (
-                <div key={log.id} className="group relative pl-5 border-l border-white/10 transition-colors hover:border-primary/50">
-                  <div className={`absolute left-[-5px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-background shadow-lg transition-all duration-300 group-hover:scale-125 ${
-                    log.type === 'ai' ? 'bg-primary animate-pulse shadow-primary/50' : log.type === 'error' ? 'bg-destructive shadow-destructive/50' : log.type === 'success' ? 'bg-green-500 shadow-green-500/50' : 'bg-muted-foreground'
-                  }`} />
-                  <p className="text-[9px] font-black text-muted-foreground/50 tracking-widest uppercase">
-                    {log.timestamp.toLocaleTimeString()}
-                  </p>
-                  <p className="text-xs font-medium leading-relaxed text-foreground/80 mt-1.5 group-hover:text-foreground transition-colors">{log.message}</p>
-                </div>
-              ))}
-              {state.logs.length === 0 && (
-                 <div className="flex flex-col items-center justify-center py-20 opacity-20 text-center">
-                   <AlertCircle className="h-8 w-8 mb-3" />
-                   <p className="text-[9px] font-black uppercase tracking-widest leading-tight">No Events<br/>Recorded</p>
-                 </div>
-              )}
+      <main className="flex-1 overflow-hidden relative">
+        {isMobile ? (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+            <div className="flex-1 overflow-hidden">
+              <TabsContent value="ingest" className="h-full m-0"><UploadPanel state={state} updateState={updateState} /></TabsContent>
+              <TabsContent value="intelligence" className="h-full m-0"><ProcessingPanel state={state} updateState={updateState} /></TabsContent>
+              <TabsContent value="curation" className="h-full m-0"><PreviewPanel state={state} updateState={updateState} /></TabsContent>
+              <TabsContent value="deploy" className="h-full m-0"><ExportPanel state={state} updateState={updateState} /></TabsContent>
             </div>
-          </ScrollArea>
-        </div>
-      </div>
+            <TabsList className="h-16 w-full bg-card/60 backdrop-blur-xl border-t grid grid-cols-4 p-2 gap-2 shrink-0">
+              <TabsTrigger value="ingest" className="flex flex-col gap-1 text-[8px] font-black uppercase"><Upload className="h-4 w-4" /> Ingest</TabsTrigger>
+              <TabsTrigger value="intelligence" className="flex flex-col gap-1 text-[8px] font-black uppercase"><Cog className="h-4 w-4" /> AI</TabsTrigger>
+              <TabsTrigger value="curation" className="flex flex-col gap-1 text-[8px] font-black uppercase"><Eye className="h-4 w-4" /> Edit</TabsTrigger>
+              <TabsTrigger value="deploy" className="flex flex-col gap-1 text-[8px] font-black uppercase"><Share2 className="h-4 w-4" /> Launch</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        ) : (
+          <div className="grid h-full grid-cols-12 overflow-hidden">
+            <div className="col-span-10 grid grid-cols-4 gap-px bg-white/5 overflow-hidden">
+              <div className="workspace-panel bg-background/30">
+                 <PanelHeader icon={<Upload className="h-4 w-4" />} title="1. Ingestion Engine" />
+                 <UploadPanel state={state} updateState={updateState} />
+              </div>
+              <div className="workspace-panel bg-background/30">
+                 <PanelHeader icon={<Cog className="h-4 w-4" />} title="2. Intelligence Layer" />
+                 <ProcessingPanel state={state} updateState={updateState} />
+              </div>
+              <div className="workspace-panel bg-background/30 border-l border-white/5">
+                 <PanelHeader icon={<Eye className="h-4 w-4" />} title="3. Curation Hub" />
+                 <PreviewPanel state={state} updateState={updateState} />
+              </div>
+              <div className="workspace-panel bg-background/30 border-l border-white/5">
+                 <PanelHeader icon={<Share2 className="h-4 w-4" />} title="4. Deployment Vault" />
+                 <ExportPanel state={state} updateState={updateState} />
+              </div>
+            </div>
+
+            <div className="col-span-2 border-l border-white/5 bg-black/20 flex flex-col overflow-hidden">
+              <div className="h-12 px-5 border-b border-white/5 bg-black/10 flex items-center justify-between">
+                <h2 className="text-[10px] font-black uppercase tracking-[0.25em] flex items-center gap-3">
+                  <History className="h-4 w-4 text-primary" /> Audit Trail
+                </h2>
+                <Badge variant="outline" className="text-[9px] font-code h-5 px-2 border-primary/30 text-primary">
+                  {state.logs.length}
+                </Badge>
+              </div>
+              <ScrollArea className="flex-1 p-5">
+                <div className="space-y-6">
+                  {state.logs.map((log) => (
+                    <div key={log.id} className="group relative pl-5 border-l border-white/10 transition-colors hover:border-primary/50">
+                      <div className={cn(
+                        "absolute left-[-5px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-background shadow-lg transition-all",
+                        log.type === 'ai' ? 'bg-primary animate-pulse' : log.type === 'error' ? 'bg-destructive' : log.type === 'success' ? 'bg-green-500' : 'bg-muted-foreground'
+                      )} />
+                      <p className="text-[9px] font-black text-muted-foreground/50 tracking-widest uppercase">
+                        {log.timestamp.toLocaleTimeString()}
+                      </p>
+                      <p className="text-xs font-medium leading-relaxed text-foreground/80 mt-1.5">{log.message}</p>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+        )}
+      </main>
 
       <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
