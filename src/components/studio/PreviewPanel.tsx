@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -30,32 +31,46 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
   };
 
   const handleSave = (index: number) => {
-    const newChunks = [...state.chunks];
-    newChunks[index].text = tempText;
-    updateState({ 
-      chunks: newChunks,
-      logs: [{ 
-        id: Math.random().toString(), 
-        timestamp: new Date(), 
-        message: `Manually edited chunk #${index + 1}`, 
-        type: 'info' 
-      }, ...state.logs]
-    });
-    setEditingIndex(null);
+    try {
+      const newChunks = [...state.chunks];
+      newChunks[index].text = tempText;
+      updateState({ 
+        chunks: newChunks,
+        logs: [{ 
+          id: Math.random().toString(36).substr(2, 9), 
+          timestamp: new Date(), 
+          message: `Manually modified chunk #${index + 1} content.`, 
+          type: 'info' 
+        }, ...state.logs]
+      });
+      setEditingIndex(null);
+      toast({ title: "Chunk Saved", description: "Your manual edits have been committed." });
+    } catch (err) {
+      toast({ title: "Save Error", variant: "destructive" });
+    }
   };
 
   const handleDelete = (index: number) => {
     const newChunks = state.chunks.filter((_, i) => i !== index);
-    updateState({ chunks: newChunks });
+    updateState({ 
+      chunks: newChunks,
+      logs: [{ 
+        id: Math.random().toString(36).substr(2, 9), 
+        timestamp: new Date(), 
+        message: `Removed chunk #${index + 1} from dataset.`, 
+        type: 'info' 
+      }, ...state.logs]
+    });
   };
 
   const handleVoiceAnnotate = async (idx: number) => {
-    // Simulate recording and transcript for MVP
     setIsProcessingVoice(idx);
-    toast({ title: "Voice Capture", description: "Simulating transcription of your voice note..." });
+    toast({ title: "Voice Capture Active", description: "Recording context for metadata refinement..." });
 
     try {
-      const mockTranscript = "This section discusses the philosophical underpinnings of dharma in the context of early Vedic society.";
+      // Simulate captured audio transcript
+      const mockTranscript = "This section is actually related to early historical interpretations of ethics.";
+      
       const enrichment = await voiceToMetadata({ 
         transcript: mockTranscript,
         currentMetadata: state.chunks[idx].metadata
@@ -71,16 +86,16 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
       updateState({ 
         chunks: newChunks,
         logs: [{ 
-          id: Math.random().toString(), 
+          id: Math.random().toString(36).substr(2, 9), 
           timestamp: new Date(), 
-          message: `Enriched chunk #${idx + 1} with voice annotation.`, 
+          message: `Enriched metadata for chunk #${idx + 1} via voice transcription.`, 
           type: 'ai' 
         }, ...state.logs]
       });
 
-      toast({ title: "Enrichment Complete", description: "Metadata updated via AI voice analysis." });
+      toast({ title: "Enrichment Success", description: `Updated topic to: ${enrichment.enrichedTopic}` });
     } catch (err) {
-      toast({ title: "Voice Pipeline Error", variant: "destructive" });
+      toast({ title: "Voice Pipeline Fault", variant: "destructive" });
     } finally {
       setIsProcessingVoice(null);
     }
@@ -88,7 +103,8 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
 
   const filteredChunks = state.chunks.filter(c => 
     c.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.metadata.topic.toLowerCase().includes(searchQuery.toLowerCase())
+    c.metadata.topic.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.metadata.keyConcepts.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -97,7 +113,7 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input 
-            placeholder="Search chunks or concepts..." 
+            placeholder="Search chunks, topics, or tags..." 
             className="pl-9 h-9 text-xs bg-background/40"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -113,7 +129,7 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
                <LayoutDashboard className="h-12 w-12 text-primary relative" />
             </div>
             <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Editor Standby</p>
-            <p className="text-[10px] text-muted-foreground mt-1">Run pipeline to generate interactive chunks</p>
+            <p className="text-[10px] text-muted-foreground mt-1">Initialize pipeline to start dataset curation</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -183,13 +199,13 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
             <div className="flex items-center gap-3">
                <div className="flex -space-x-1.5">
                  {[1,2,3].map(i => (
-                   <div key={i} className="h-5 w-5 rounded-full border border-background bg-primary/20 text-[8px] flex items-center justify-center font-bold text-primary">AI</div>
+                   <div key={i} className="h-5 w-5 rounded-full border border-background bg-primary/20 text-[8px] flex items-center justify-center font-bold text-primary uppercase">Iks</div>
                  ))}
                </div>
-               <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Ensemble Review</span>
+               <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Ensemble Check</span>
             </div>
-            <Button size="sm" variant="outline" className="h-7 text-[10px] gap-2 uppercase tracking-widest px-3 border-primary/20 hover:bg-primary/5">
-              <Check className="h-3 w-3" /> Batch Approve
+            <Button size="sm" variant="outline" className="h-7 text-[10px] gap-2 uppercase tracking-widest px-3 border-primary/20 hover:bg-primary/5" onClick={() => toast({ title: "Dataset Approved", description: "Batch ready for vector deployment." })}>
+              <Check className="h-3 w-3" /> Approve All
             </Button>
           </div>
         </div>

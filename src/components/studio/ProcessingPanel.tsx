@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -29,49 +30,65 @@ export default function ProcessingPanel({ state, updateState }: ProcessingPanelP
     chunkOverlap: 100,
   });
 
-  // Auto-enable OCR if an image is uploaded
   useEffect(() => {
     if (state.fileType?.startsWith('image/')) {
       setOptions(prev => ({ ...prev, useOcr: true }));
     }
   }, [state.fileType]);
 
+  const addPipelineLog = (message: string, type: 'info' | 'ai' | 'success' | 'error' = 'info') => {
+    updateState({
+      logs: [{ 
+        id: Math.random().toString(36).substr(2, 9), 
+        timestamp: new Date(), 
+        message, 
+        type 
+      }, ...state.logs]
+    });
+  };
+
   const runPipeline = async () => {
     if (!state.rawText) {
-      toast({ title: "No input", description: "Please upload or paste text first.", variant: "destructive" });
+      toast({ title: "Input Required", description: "Please upload a document or paste text to begin.", variant: "destructive" });
       return;
     }
 
     updateState({ status: 'processing' });
+    addPipelineLog("Starting ingestion pipeline sequence...", "info");
 
     try {
       let currentText = state.rawText;
 
-      // 1. OCR (if applicable)
+      // 1. OCR
       if (options.useOcr && state.fileType?.startsWith('image/')) {
+        addPipelineLog("Activating Multilingual OCR engine...", "ai");
         const ocrResult = await multilingualOcr({ 
           photoDataUri: state.rawText,
           languageHint: options.language 
         });
         currentText = ocrResult.extractedText;
+        addPipelineLog(`OCR completed. Detected ${ocrResult.detectedLanguage} with ${Math.round(ocrResult.confidence * 100)}% confidence.`, "success");
       }
 
       // 2. Cleaning
       if (options.useCleaning) {
+        addPipelineLog("Running noise reduction and formatting normalization...", "ai");
         const cleaningResult = await aiPoweredDocumentCleaning({ documentText: currentText });
         currentText = cleaningResult.cleanedText;
+        addPipelineLog("Text cleaning finished. Removed headers, footers, and OCR noise.", "success");
       }
 
       // 3. Chunking & Metadata
       if (options.useChunking) {
+        addPipelineLog(`Segmenting text into ${options.chunkSize}t semantic units...`, "ai");
         const chunkingResult = await automatedChunkingAndMetadataGeneration({
           documentContent: currentText,
           chunkSize: options.chunkSize,
           chunkOverlap: options.chunkOverlap,
           sourceDetails: {
-            textName: state.fileName || "Untitled Dataset",
+            textName: state.fileName || "Ad-hoc Dataset",
             language: options.language,
-            domain: "IKS Civilizational Data",
+            domain: "Knowledge Base",
           }
         });
         
@@ -80,25 +97,27 @@ export default function ProcessingPanel({ state, updateState }: ProcessingPanelP
           chunks: chunkingResult.chunks,
           status: 'completed' 
         });
+        addPipelineLog(`Pipeline completed. Generated ${chunkingResult.chunks.length} semantically rich units.`, "success");
       } else {
         updateState({ 
           processedText: currentText,
           status: 'completed' 
         });
+        addPipelineLog("Pipeline completed (Raw extraction mode).", "success");
       }
 
-      toast({ title: "Ingestion Pipeline Success", description: `Processed into ${state.chunks.length} semantic units.` });
+      toast({ title: "Pipeline Finished", description: "Your data has been processed and is ready for review." });
     } catch (err) {
       console.error(err);
       updateState({ status: 'error' });
-      toast({ title: "Pipeline Fault", description: "An error occurred in the AI processing layers.", variant: "destructive" });
+      addPipelineLog("Critical failure in AI processing layer.", "error");
+      toast({ title: "Pipeline Fault", description: "The AI engine encountered an error. Check logs for details.", variant: "destructive" });
     }
   };
 
   return (
     <div className="flex flex-col gap-6 p-5">
       <div className="space-y-4">
-        {/* Toggle Sections */}
         <div className="grid grid-cols-1 gap-2">
           <PipelineToggle 
             label="Visual OCR" 
@@ -121,11 +140,10 @@ export default function ProcessingPanel({ state, updateState }: ProcessingPanelP
           />
         </div>
 
-        {/* Dynamic Controls */}
         <div className="space-y-4 rounded-xl bg-card/30 p-4 border border-border/50">
           <div className="flex items-center gap-2 mb-4">
              <Wand2 className="h-3.5 w-3.5 text-primary" />
-             <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Model Parameters</span>
+             <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">Hyperparameters</span>
           </div>
 
           <div className="space-y-5">
@@ -159,7 +177,7 @@ export default function ProcessingPanel({ state, updateState }: ProcessingPanelP
           <div className="mt-6 pt-4 border-t border-border/40 space-y-3">
              <div className="flex items-center gap-2">
                <Tag className="h-3 w-3 text-muted-foreground" />
-               <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Primary Context</Label>
+               <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Linguistic Context</Label>
              </div>
              <Select 
                 value={options.language} 
@@ -169,9 +187,9 @@ export default function ProcessingPanel({ state, updateState }: ProcessingPanelP
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="english">English (Modern)</SelectItem>
-                  <SelectItem value="sanskrit">Sanskrit (IAST)</SelectItem>
-                  <SelectItem value="hindi">Hindi (Devanagari)</SelectItem>
+                  <SelectItem value="english">English (Global Standard)</SelectItem>
+                  <SelectItem value="sanskrit">Sanskrit (IAST / Vedic)</SelectItem>
+                  <SelectItem value="hindi">Hindi (Modern Devanagari)</SelectItem>
                 </SelectContent>
               </Select>
           </div>
@@ -193,7 +211,7 @@ export default function ProcessingPanel({ state, updateState }: ProcessingPanelP
             ) : (
               <Zap className="h-4 w-4 fill-current group-hover:scale-110 transition-transform" />
             )}
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em]">{state.status === 'processing' ? 'Processing...' : 'Engage Pipeline'}</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em]">{state.status === 'processing' ? 'Syncing...' : 'Engage Engine'}</span>
           </div>
         </Button>
       </div>
