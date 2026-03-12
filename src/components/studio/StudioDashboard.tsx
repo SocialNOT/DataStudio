@@ -26,7 +26,8 @@ import {
   Activity,
   Cloud,
   Network,
-  ShieldCheck
+  ShieldCheck,
+  Users
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +46,8 @@ export type LogEntry = {
   type: 'info' | 'success' | 'error' | 'ai';
 };
 
+export type ChunkStatus = 'draft' | 'verified' | 'flagged';
+
 export type ChunkMetadata = {
   topic: string;
   keyConcepts: string[];
@@ -53,11 +56,14 @@ export type ChunkMetadata = {
   language?: string;
   period?: string;
   domain?: string;
+  status: ChunkStatus;
+  annotatorNote?: string;
 };
 
 export type QaPair = {
   instruction: string;
   output: string;
+  status: ChunkStatus;
 };
 
 export type GraphData = {
@@ -116,6 +122,7 @@ export default function StudioDashboard() {
     globalMetadata: {
       language: 'english',
       domain: 'Knowledge Base',
+      status: 'draft'
     },
     logs: [],
     embeddingModel: 'bge-large-en-v1.5',
@@ -129,8 +136,13 @@ export default function StudioDashboard() {
 
   useEffect(() => {
     setMounted(true);
-    addLog('Mitsara Engine v1.2 initialized. Instruction factory ready.', 'info');
   }, []);
+
+  useEffect(() => {
+    if (mounted) {
+      addLog('Mitsara Neural Engine initialized. Ingestion factory ready.', 'info');
+    }
+  }, [mounted]);
 
   const handleSignIn = async () => {
     if (auth) {
@@ -331,7 +343,7 @@ export default function StudioDashboard() {
                     log.type === 'ai' ? 'bg-primary animate-pulse' : log.type === 'error' ? 'bg-destructive' : log.type === 'success' ? 'bg-green-500' : 'bg-muted-foreground'
                   }`} />
                   <p className="text-[9px] font-code text-muted-foreground/60">
-                    {mounted ? log.timestamp.toLocaleTimeString() : '--:--:--'}
+                    {log.timestamp.toLocaleTimeString()}
                   </p>
                   <p className="text-[11px] font-body leading-tight text-foreground/80 mt-1">{log.message}</p>
                 </div>

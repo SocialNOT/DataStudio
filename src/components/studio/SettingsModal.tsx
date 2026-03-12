@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -8,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { 
   Settings, 
   Key, 
@@ -18,7 +20,10 @@ import {
   Cpu, 
   LogOut,
   Mail,
-  Smartphone
+  Smartphone,
+  Users,
+  ShieldAlert,
+  History as HistoryIcon
 } from 'lucide-react';
 import { useUser, useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -54,10 +59,11 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
             
             <nav className="flex flex-col gap-1">
               <NavButton icon={<User className="h-4 w-4" />} label="Account" active />
+              <NavButton icon={<Users className="h-4 w-4" />} label="Team & Roles" />
               <NavButton icon={<Key className="h-4 w-4" />} label="API Keys" />
               <NavButton icon={<Database className="h-4 w-4" />} label="Storage" />
               <NavButton icon={<ShieldCheck className="h-4 w-4" />} label="Security" />
-              <NavButton icon={<Globe className="h-4 w-4" />} label="Network" />
+              <NavButton icon={<HistoryIcon className="h-4 w-4" />} label="Audit Logs" />
             </nav>
 
             <div className="mt-auto pt-6 border-t border-white/5">
@@ -95,23 +101,33 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
                         <div className="h-10 w-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-primary">
                           {user?.displayName?.[0] || user?.email?.[0] || 'U'}
                         </div>
-                        <div>
-                          <p className="text-sm font-bold">{user?.displayName || 'Active Ingestor'}</p>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold">{user?.displayName || 'Active Ingestor'}</p>
+                            <Badge className="h-4 text-[8px] bg-primary/20 text-primary border-none">OWNER</Badge>
+                          </div>
                           <p className="text-[10px] text-muted-foreground font-code">{user?.email}</p>
                         </div>
                       </div>
                     </div>
+                  </div>
+                </section>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="display-name" className="text-[10px] font-bold uppercase">Display Identifier</Label>
-                        <Input id="display-name" defaultValue={user?.displayName || ''} className="bg-background/50 border-white/10" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="contact-email" className="text-[10px] font-bold uppercase">Emergency Contact</Label>
-                        <Input id="contact-email" placeholder="email@mitsara.io" className="bg-background/50 border-white/10" />
-                      </div>
-                    </div>
+                <Separator className="bg-white/5" />
+
+                {/* Team Section - Feature 17 */}
+                <section className="space-y-6">
+                   <div className="flex items-center gap-2 mb-4">
+                    <Users className="h-4 w-4 text-primary" />
+                    <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Research Team</h3>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <TeamMember name="Dr. Ananda Sharma" role="Lead Researcher" status="Online" />
+                    <TeamMember name="Sanjeev Gupta" role="Data Annotator" status="Away" />
+                    <Button variant="outline" className="w-full border-dashed border-white/10 h-10 text-[10px] font-bold uppercase tracking-widest gap-2">
+                      <Users className="h-3 w-3" /> Invite Contributor
+                    </Button>
                   </div>
                 </section>
 
@@ -172,6 +188,24 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function TeamMember({ name, role, status }: { name: string, role: string, status: string }) {
+  return (
+    <div className="flex items-center justify-between p-3 rounded-xl bg-card border border-white/5">
+      <div className="flex items-center gap-3">
+        <div className="h-8 w-8 rounded bg-muted flex items-center justify-center text-[10px] font-bold">{name[0]}</div>
+        <div>
+          <p className="text-xs font-bold">{name}</p>
+          <p className="text-[10px] text-muted-foreground">{role}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className={`h-1.5 w-1.5 rounded-full ${status === 'Online' ? 'bg-green-500' : 'bg-orange-500'}`} />
+        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{status}</span>
+      </div>
+    </div>
   );
 }
 

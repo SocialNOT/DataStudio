@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { PipelineState } from './StudioDashboard';
+import { PipelineState, ChunkStatus } from './StudioDashboard';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,10 +27,20 @@ import {
   ArrowRight,
   ShieldCheck,
   TrendingUp,
-  Fingerprint
+  Fingerprint,
+  CheckCircle,
+  AlertTriangle,
+  MessageSquarePlus,
+  UserCheck
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { voiceToMetadata } from '@/ai/flows/voice-to-metadata';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
 
 interface PreviewPanelProps {
   state: PipelineState;
@@ -43,6 +53,7 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
   const [tempText, setTempText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isProcessingVoice, setIsProcessingVoice] = useState<number | null>(null);
+  const [annotatingIndex, setAnnotatingIndex] = useState<number | null>(null);
 
   const handleEdit = (index: number) => {
     setEditingIndex(index);
@@ -79,6 +90,19 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
       const newPairs = state.qaPairs.filter((_, i) => i !== index);
       updateState({ qaPairs: newPairs });
     }
+  };
+
+  const updateStatus = (index: number, status: ChunkStatus) => {
+    if (state.viewMode === 'chunks') {
+      const newChunks = [...state.chunks];
+      newChunks[index].metadata.status = status;
+      updateState({ chunks: newChunks });
+    } else {
+      const newPairs = [...state.qaPairs];
+      newPairs[index].status = status;
+      updateState({ qaPairs: newPairs });
+    }
+    toast({ title: `Status set to ${status.toUpperCase()}` });
   };
 
   const handleVoiceAnnotate = async (idx: number) => {
@@ -203,15 +227,25 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
           <div className="space-y-4">
             {state.viewMode === 'chunks' ? (
               (filteredItems as any[]).map((chunk, idx) => (
-                <Card key={idx} className="overflow-hidden border-border/50 bg-card/60 transition-all hover:border-primary/30">
+                <Card key={idx} className={`overflow-hidden border-border/50 bg-card/60 transition-all hover:border-primary/30 ${chunk.metadata.status === 'flagged' ? 'border-destructive/30 bg-destructive/5' : chunk.metadata.status === 'verified' ? 'border-green-500/30 bg-green-500/5' : ''}`}>
                   <div className="flex items-center justify-between bg-muted/20 px-3 py-2 border-b border-border/30">
                     <div className="flex items-center gap-2">
                       <span className="font-code text-[10px] font-bold text-primary">#{(idx + 1).toString().padStart(2, '0')}</span>
+                      <StatusBadge status={chunk.metadata.status} />
                       <Badge variant="outline" className="h-4 text-[9px] uppercase font-bold bg-primary/5 text-primary border-primary/20">
                         {chunk.metadata.topic}
                       </Badge>
                     </div>
-                    <ActionButton index={idx} editingIndex={editingIndex} onEdit={handleEdit} onSave={handleSave} onDelete={handleDelete} onVoice={() => handleVoiceAnnotate(idx)} isVoiceLoading={isProcessingVoice === idx} />
+                    <ActionButton 
+                      index={idx} 
+                      editingIndex={editingIndex} 
+                      onEdit={handleEdit} 
+                      onSave={handleSave} 
+                      onDelete={handleDelete} 
+                      onVoice={() => handleVoiceAnnotate(idx)} 
+                      isVoiceLoading={isProcessingVoice === idx}
+                      onStatusChange={(s: ChunkStatus) => updateStatus(idx, s)}
+                    />
                   </div>
                   <div className="p-3">
                     {editingIndex === idx ? (
@@ -219,6 +253,16 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
                     ) : (
                       <p className="text-xs leading-relaxed text-foreground/90 whitespace-pre-wrap">{chunk.text}</p>
                     )}
+                    
+                    {chunk.metadata.annotatorNote && (
+                      <div className="mt-3 p-2 rounded bg-muted/30 border-l-2 border-primary/50">
+                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                          <MessageSquarePlus className="h-3 w-3" /> Researcher Note
+                        </p>
+                        <p className="text-[10px] italic">{chunk.metadata.annotatorNote}</p>
+                      </div>
+                    )}
+
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {chunk.metadata.keyConcepts.map((tag: string, tIdx: number) => (
                         <div key={tIdx} className="flex items-center gap-1.5 rounded bg-accent/5 px-2 py-0.5 border border-accent/10">
@@ -239,7 +283,10 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
                         <MessageSquare className="h-3.5 w-3.5 text-accent" />
                       </div>
                       <div className="space-y-1">
-                        <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Instruction</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Instruction</p>
+                          <StatusBadge status={pair.status || 'draft'} />
+                        </div>
                         <p className="text-xs font-bold leading-relaxed">{pair.instruction}</p>
                       </div>
                     </div>
@@ -252,7 +299,14 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
                       )}
                     </div>
                     <div className="flex justify-end pt-2 border-t border-white/5 gap-1">
-                       <ActionButton index={idx} editingIndex={editingIndex} onEdit={handleEdit} onSave={handleSave} onDelete={handleDelete} />
+                       <ActionButton 
+                        index={idx} 
+                        editingIndex={editingIndex} 
+                        onEdit={handleEdit} 
+                        onSave={handleSave} 
+                        onDelete={handleDelete}
+                        onStatusChange={(s: ChunkStatus) => updateStatus(idx, s)}
+                       />
                     </div>
                   </div>
                 </Card>
@@ -262,6 +316,19 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
         )}
       </ScrollArea>
     </div>
+  );
+}
+
+function StatusBadge({ status }: { status: ChunkStatus }) {
+  const styles = {
+    draft: "bg-muted/10 text-muted-foreground border-muted/20",
+    verified: "bg-green-500/10 text-green-500 border-green-500/20",
+    flagged: "bg-destructive/10 text-destructive border-destructive/20"
+  };
+  return (
+    <Badge variant="outline" className={`h-4 text-[8px] font-black uppercase px-1.5 ${styles[status]}`}>
+      {status}
+    </Badge>
   );
 }
 
@@ -277,9 +344,28 @@ function MetricItem({ label, value, color }: { label: string, value: number, col
   );
 }
 
-function ActionButton({ index, editingIndex, onEdit, onSave, onDelete, onVoice, isVoiceLoading }: any) {
+function ActionButton({ index, editingIndex, onEdit, onSave, onDelete, onVoice, isVoiceLoading, onStatusChange }: any) {
   return (
     <div className="flex gap-1">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary">
+            <UserCheck className="h-3.5 w-3.5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-xl border-white/10">
+          <DropdownMenuItem onClick={() => onStatusChange('verified')} className="text-[10px] font-bold uppercase gap-2">
+            <CheckCircle className="h-3 w-3 text-green-500" /> Verify Unit
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onStatusChange('flagged')} className="text-[10px] font-bold uppercase gap-2">
+            <AlertTriangle className="h-3 w-3 text-destructive" /> Flag for Review
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onStatusChange('draft')} className="text-[10px] font-bold uppercase gap-2">
+            <Edit2 className="h-3 w-3 text-muted-foreground" /> Set to Draft
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       {onVoice && (
         <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={onVoice}>
           {isVoiceLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mic className="h-3.5 w-3.5" />}
