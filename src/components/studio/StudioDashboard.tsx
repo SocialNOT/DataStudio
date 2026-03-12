@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -16,7 +15,6 @@ import {
   Share2, 
   History, 
   Settings, 
-  Bell, 
   Moon, 
   Sun,
   LogIn,
@@ -25,10 +23,7 @@ import {
   Terminal,
   Activity,
   Cloud,
-  Network,
-  ShieldCheck,
   CheckCircle2,
-  AlertCircle,
   Menu
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -122,7 +117,7 @@ export default function StudioDashboard() {
     graph: { nodes: [], edges: [] },
     viewMode: 'chunks',
     status: 'idle',
-    datasetName: 'Untitled Dataset',
+    datasetName: 'Mitsara Dataset',
     version: '1.0.0',
     globalMetadata: {
       language: 'english',
@@ -141,11 +136,22 @@ export default function StudioDashboard() {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    // Initialize theme based on state
+    const html = document.documentElement;
+    if (isDarkMode) {
+      html.classList.add('dark');
+    } else {
+      html.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
+  const toggleTheme = () => {
+    setIsDarkMode(prev => !prev);
+  };
 
   useEffect(() => {
     if (mounted) {
-      addLog('Mitsara Neural Engine initialized. Multi-agent cluster ready.', 'info');
+      addLog('Mitsara Neural Engine synchronized. Indian Tricolor protocol active.', 'info');
     }
   }, [mounted]);
 
@@ -163,21 +169,17 @@ export default function StudioDashboard() {
   const updateState = (updates: Partial<PipelineState>) => {
     setState((prev) => {
       const newState = { ...prev, ...updates };
-      
       if (updates.status && updates.status !== prev.status) {
-        const logId = Math.random().toString(36).substr(2, 9);
-        const statusMsg = `Pipeline State Shift: ${updates.status.toUpperCase()}`;
         newState.logs = [
           { 
-            id: logId, 
+            id: Math.random().toString(36).substr(2, 9), 
             timestamp: new Date(), 
-            message: statusMsg, 
+            message: `Pipeline Shift: ${updates.status.toUpperCase()}`, 
             type: updates.status === 'error' ? 'error' : updates.status === 'completed' ? 'success' : 'info' 
           },
           ...prev.logs
         ];
       }
-      
       return newState;
     });
   };
@@ -192,225 +194,146 @@ export default function StudioDashboard() {
     }));
   };
 
-  const handleCreateSnapshot = async () => {
-    if (!user) {
-      toast({ title: "Authentication Required", description: "Node must be connected for snapshots.", variant: "destructive" });
-      return;
-    }
-
-    addLog("Initializing Emergency State Snapshot...", "info");
-    
-    try {
-      const snapshotRef = collection(db, 'datasets', state.datasetId, 'backups');
-      addDoc(snapshotRef, {
-        id: Date.now().toString(),
-        datasetId: state.datasetId,
-        timestamp: serverTimestamp(),
-        snapshot: {
-          chunksCount: state.chunks.length,
-          qaPairsCount: state.qaPairs.length,
-          qualityMetrics: state.qualityMetrics,
-          version: state.version
-        },
-        checksum: Math.random().toString(36).substring(7)
-      }).catch(async (err) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: snapshotRef.path,
-          operation: 'create',
-          requestResourceData: { datasetId: state.datasetId }
-        }));
-      });
-
-      addLog("Disaster Recovery Snapshot persisted to cloud vault.", "success");
-      toast({ title: "Snapshot Captured", description: "Cloud backup finalized." });
-    } catch (err) {
-       addLog("Critical failure in snapshot sequence.", "error");
-    }
-  };
-
   const handleSaveToCloud = async () => {
     if (!user) {
       toast({ title: "Auth Required", description: "Connect node to persist data.", variant: "destructive" });
       return;
     }
-
     addLog("Synchronizing local state with Deployment Vault...", "info");
-
     try {
       const datasetRef = doc(db, 'datasets', state.datasetId);
-      const versionRef = doc(db, 'datasets', state.datasetId, 'versions', state.version);
-
       setDoc(datasetRef, {
         id: state.datasetId,
         name: state.datasetName,
         ownerId: user.uid,
         currentVersion: state.version,
         updatedAt: serverTimestamp(),
-        createdAt: serverTimestamp(),
-      }, { merge: true }).catch(async () => {
+      }, { merge: true }).catch(() => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: datasetRef.path,
           operation: 'update',
           requestResourceData: { name: state.datasetName }
         }));
       });
-
-      setDoc(versionRef, {
-        version: state.version,
-        datasetId: state.datasetId,
-        status: 'published',
-        chunkCount: state.chunks.length,
-        qaCount: state.qaPairs.length,
-        createdAt: serverTimestamp(),
-      }, { merge: true });
-
       addLog("Cloud synchronization complete. Shards persisted.", "success");
-      toast({ title: "Session Persisted", description: `Dataset ${state.datasetName} saved to vault.` });
+      toast({ title: "Session Persisted" });
     } catch (err) {
       addLog("Failed to write to cloud vault.", "error");
-      toast({ title: "Sync Fault", variant: "destructive" });
     }
   };
 
   const PanelHeader = ({ icon, title }: { icon: React.ReactNode, title: string }) => (
     <div className="h-12 border-b border-white/5 bg-black/10 flex items-center gap-3 px-5 shrink-0">
-      <span className="text-primary/80 group-hover:scale-110 transition-transform">{icon}</span>
-      <h2 className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground/80 leading-none">{title}</h2>
+      <span className="text-primary group-hover:scale-110 transition-transform">{icon}</span>
+      <h2 className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground leading-none">{title}</h2>
     </div>
   );
 
-  if (!mounted) return <div className="h-screen w-screen bg-background" />;
+  if (!mounted) return null;
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground selection:bg-primary/20">
+    <div className="flex flex-col overflow-hidden bg-background text-foreground h-[100dvh] w-screen">
+      {/* Header */}
       <header className="flex h-16 items-center justify-between border-b bg-card/60 px-4 md:px-8 backdrop-blur-2xl shrink-0 z-50">
-        <div className="flex items-center gap-4 md:gap-6">
+        <div className="flex items-center gap-3 md:gap-6">
           <div className="relative group cursor-pointer" onClick={() => updateState({ viewMode: 'metrics' })}>
-            <div className="absolute inset-0 animate-pulse-ring rounded-xl bg-primary/20 group-hover:bg-primary/40 transition-all duration-500" />
-            <div className="relative flex h-9 w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-white shadow-2xl shadow-primary/40 group-hover:scale-105 transition-transform active:scale-95">
-              <BrainCircuit className="h-5 w-5 md:h-6 md:w-6" />
+            <div className="absolute inset-0 animate-pulse-ring rounded-xl bg-primary/20" />
+            <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95">
+              <BrainCircuit className="h-5 w-5" />
             </div>
           </div>
           <div className="flex flex-col">
             <h1 className="font-headline text-sm md:text-lg font-black tracking-tight flex items-center gap-2">
-              Mitsara <span className="text-primary glow-text tracking-tighter italic">Studio</span>
-              <Badge variant="outline" className="hidden md:inline-flex h-4 text-[7px] border-primary/20 bg-primary/5 text-primary ml-2 uppercase font-black tracking-[0.2em]">PRO ENGINE</Badge>
+              Mitsara <span className="text-primary glow-text">Studio</span>
+              <div className="h-1.5 w-1.5 rounded-full tricolor-gradient animate-pulse" />
             </h1>
-            <div className="flex items-center gap-2.5 mt-0.5 md:mt-1 opacity-70">
-              <Layers className="h-2.5 w-2.5 text-primary" />
+            <div className="flex items-center gap-2 mt-0.5 opacity-70">
               <span className="text-[8px] md:text-[9px] text-muted-foreground uppercase tracking-[0.2em] font-black truncate max-w-[120px]">
-                {state.datasetName} <span className="text-primary font-code opacity-80 ml-1">v{state.version}</span>
+                {state.datasetName} <span className="text-primary">v{state.version}</span>
               </span>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2 md:gap-6">
-           <div className="hidden lg:flex items-center gap-8 px-6 py-2 rounded-2xl bg-black/20 border border-white/5 shadow-inner">
+           <div className="hidden lg:flex items-center gap-8 px-6 py-2 rounded-2xl bg-black/5 border border-white/5">
               <Metric label="Chunks" value={state.chunks.length} icon={<Database className="h-3 w-3" />} />
               <Metric label="QA Shards" value={state.qaPairs.length} icon={<Terminal className="h-3 w-3" />} />
               <Metric 
-                label="Integrity" 
+                label="Health" 
                 value={state.chunks.length > 0 ? `${Math.round(state.qualityMetrics.semanticCoherence * 100)}%` : '0%'} 
-                icon={state.qualityMetrics.semanticCoherence > 0.8 ? <CheckCircle2 className="h-3 w-3 text-green-500" /> : <Activity className="h-3 w-3 text-orange-500" />} 
+                icon={<Activity className="h-3 w-3 text-secondary" />} 
               />
            </div>
 
-           <div className="flex items-center gap-1.5 bg-black/30 p-1 rounded-xl border border-white/5">
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setIsDarkMode(!isDarkMode)}>
-                {isDarkMode ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
+           <div className="flex items-center gap-1.5 bg-black/5 p-1 rounded-xl border border-white/5">
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={toggleTheme}>
+                {isDarkMode ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
               </Button>
-              <Button 
-                size="icon" 
-                variant="ghost" 
-                className="h-8 w-8 text-muted-foreground hover:text-primary transition-all group" 
-                onClick={() => setSettingsOpen(true)}
-              >
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-primary transition-all group" onClick={() => setSettingsOpen(true)}>
                 <Settings className="h-3.5 w-3.5 group-hover:rotate-90 transition-transform duration-500" />
               </Button>
            </div>
 
-           {loading ? (
-             <div className="h-9 w-24 bg-muted/20 animate-pulse rounded-xl" />
-           ) : user ? (
+           {user ? (
              <div className="flex items-center gap-2">
-               <div className="hidden sm:flex gap-1.5">
-                 <Button variant="ghost" size="sm" className="h-8 text-[8px] font-black uppercase tracking-widest gap-2 text-primary hover:bg-primary/10" onClick={handleSaveToCloud}>
-                   <Cloud className="h-3 w-3" /> Sync
-                 </Button>
-               </div>
-               <div className="flex items-center gap-3 pl-3 md:pl-6 md:border-l border-white/10 group cursor-pointer" onClick={() => setSettingsOpen(true)}>
-                 <div className="h-8 w-8 md:h-10 md:w-10 rounded-xl border-2 border-primary/20 bg-primary/10 flex items-center justify-center font-bold text-primary text-[10px] md:text-[11px] shadow-xl group-hover:scale-105 transition-transform">
-                   {user.displayName?.[0] || user.email?.[0] || 'A'}
-                 </div>
+               <Button variant="ghost" size="sm" className="hidden sm:flex h-8 text-[8px] font-black uppercase tracking-widest gap-2 text-primary hover:bg-primary/10" onClick={handleSaveToCloud}>
+                 <Cloud className="h-3 w-3" /> Sync
+               </Button>
+               <div className="h-8 w-8 md:h-10 md:w-10 rounded-xl border-2 border-primary/20 bg-primary/10 flex items-center justify-center font-bold text-primary text-[10px] cursor-pointer" onClick={() => setSettingsOpen(true)}>
+                 {user.displayName?.[0] || user.email?.[0] || 'A'}
                </div>
              </div>
            ) : (
-             <Button variant="outline" size="sm" className="h-9 px-3 md:px-6 text-[9px] font-black uppercase tracking-[0.2em] gap-2 bg-primary/10 border-primary/30 hover:bg-primary/20" onClick={handleSignIn}>
+             <Button variant="outline" size="sm" className="h-9 px-3 md:px-6 text-[9px] font-black uppercase tracking-widest gap-2 bg-primary/10 border-primary/30" onClick={handleSignIn}>
                <LogIn className="h-3.5 w-3.5" /> Auth
              </Button>
            )}
         </div>
       </header>
 
+      {/* Main Workspace */}
       <main className="flex-1 overflow-hidden relative">
         {isMobile ? (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
             <div className="flex-1 overflow-hidden">
-              <TabsContent value="ingest" className="h-full m-0"><UploadPanel state={state} updateState={updateState} /></TabsContent>
-              <TabsContent value="intelligence" className="h-full m-0"><ProcessingPanel state={state} updateState={updateState} /></TabsContent>
-              <TabsContent value="curation" className="h-full m-0"><PreviewPanel state={state} updateState={updateState} /></TabsContent>
-              <TabsContent value="deploy" className="h-full m-0"><ExportPanel state={state} updateState={updateState} /></TabsContent>
+              <TabsContent value="ingest" className="h-full m-0 p-0"><UploadPanel state={state} updateState={updateState} /></TabsContent>
+              <TabsContent value="intelligence" className="h-full m-0 p-0"><ProcessingPanel state={state} updateState={updateState} /></TabsContent>
+              <TabsContent value="curation" className="h-full m-0 p-0"><PreviewPanel state={state} updateState={updateState} /></TabsContent>
+              <TabsContent value="deploy" className="h-full m-0 p-0"><ExportPanel state={state} updateState={updateState} /></TabsContent>
             </div>
             <TabsList className="h-16 w-full bg-card/60 backdrop-blur-xl border-t grid grid-cols-4 p-2 gap-2 shrink-0">
-              <TabsTrigger value="ingest" className="flex flex-col gap-1 text-[8px] font-black uppercase"><Upload className="h-4 w-4" /> Ingest</TabsTrigger>
-              <TabsTrigger value="intelligence" className="flex flex-col gap-1 text-[8px] font-black uppercase"><Cog className="h-4 w-4" /> AI</TabsTrigger>
-              <TabsTrigger value="curation" className="flex flex-col gap-1 text-[8px] font-black uppercase"><Eye className="h-4 w-4" /> Edit</TabsTrigger>
-              <TabsTrigger value="deploy" className="flex flex-col gap-1 text-[8px] font-black uppercase"><Share2 className="h-4 w-4" /> Launch</TabsTrigger>
+              <TabsTrigger value="ingest" className="flex flex-col gap-1 text-[8px] font-black uppercase data-[state=active]:bg-primary/20"><Upload className="h-4 w-4" /> Source</TabsTrigger>
+              <TabsTrigger value="intelligence" className="flex flex-col gap-1 text-[8px] font-black uppercase data-[state=active]:bg-primary/20"><Cog className="h-4 w-4" /> AI</TabsTrigger>
+              <TabsTrigger value="curation" className="flex flex-col gap-1 text-[8px] font-black uppercase data-[state=active]:bg-primary/20"><Eye className="h-4 w-4" /> Hub</TabsTrigger>
+              <TabsTrigger value="deploy" className="flex flex-col gap-1 text-[8px] font-black uppercase data-[state=active]:bg-primary/20"><Share2 className="h-4 w-4" /> Vault</TabsTrigger>
             </TabsList>
           </Tabs>
         ) : (
-          <div className="grid h-full grid-cols-12 overflow-hidden">
-            <div className="col-span-10 grid grid-cols-4 gap-px bg-white/5 overflow-hidden">
-              <div className="workspace-panel bg-background/30">
-                 <PanelHeader icon={<Upload className="h-4 w-4" />} title="1. Ingestion Engine" />
-                 <UploadPanel state={state} updateState={updateState} />
-              </div>
-              <div className="workspace-panel bg-background/30">
-                 <PanelHeader icon={<Cog className="h-4 w-4" />} title="2. Intelligence Layer" />
-                 <ProcessingPanel state={state} updateState={updateState} />
-              </div>
-              <div className="workspace-panel bg-background/30 border-l border-white/5">
-                 <PanelHeader icon={<Eye className="h-4 w-4" />} title="3. Curation Hub" />
-                 <PreviewPanel state={state} updateState={updateState} />
-              </div>
-              <div className="workspace-panel bg-background/30 border-l border-white/5">
-                 <PanelHeader icon={<Share2 className="h-4 w-4" />} title="4. Deployment Vault" />
-                 <ExportPanel state={state} updateState={updateState} />
-              </div>
+          <div className="grid h-full grid-cols-12 overflow-hidden bg-white/5">
+            <div className="col-span-10 grid grid-cols-4 gap-px bg-white/5">
+              <div className="workspace-panel bg-card/20"><PanelHeader icon={<Upload className="h-4 w-4" />} title="Ingestion" /><UploadPanel state={state} updateState={updateState} /></div>
+              <div className="workspace-panel bg-card/20"><PanelHeader icon={<Cog className="h-4 w-4" />} title="Intelligence" /><ProcessingPanel state={state} updateState={updateState} /></div>
+              <div className="workspace-panel bg-card/20 border-l border-white/5"><PanelHeader icon={<Eye className="h-4 w-4" />} title="Curation" /><PreviewPanel state={state} updateState={updateState} /></div>
+              <div className="workspace-panel bg-card/20 border-l border-white/5"><PanelHeader icon={<Share2 className="h-4 w-4" />} title="Vault" /><ExportPanel state={state} updateState={updateState} /></div>
             </div>
-
-            <div className="col-span-2 border-l border-white/5 bg-black/20 flex flex-col overflow-hidden">
-              <div className="h-12 px-5 border-b border-white/5 bg-black/10 flex items-center justify-between">
-                <h2 className="text-[10px] font-black uppercase tracking-[0.25em] flex items-center gap-3">
-                  <History className="h-4 w-4 text-primary" /> Audit Trail
+            <div className="col-span-2 border-l border-white/5 bg-black/10 flex flex-col overflow-hidden">
+              <div className="h-12 px-5 border-b border-white/5 flex items-center justify-between">
+                <h2 className="text-[10px] font-black uppercase tracking-widest flex items-center gap-3">
+                  <History className="h-4 w-4 text-primary" /> Audit
                 </h2>
-                <Badge variant="outline" className="text-[9px] font-code h-5 px-2 border-primary/30 text-primary">
-                  {state.logs.length}
-                </Badge>
+                <Badge variant="outline" className="text-[9px] font-code h-5 border-primary/30 text-primary">{state.logs.length}</Badge>
               </div>
               <ScrollArea className="flex-1 p-5">
                 <div className="space-y-6">
                   {state.logs.map((log) => (
-                    <div key={log.id} className="group relative pl-5 border-l border-white/10 transition-colors hover:border-primary/50">
+                    <div key={log.id} className="group relative pl-5 border-l border-white/10">
                       <div className={cn(
-                        "absolute left-[-5px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-background shadow-lg transition-all",
-                        log.type === 'ai' ? 'bg-primary animate-pulse' : log.type === 'error' ? 'bg-destructive' : log.type === 'success' ? 'bg-green-500' : 'bg-muted-foreground'
+                        "absolute left-[-5px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-background",
+                        log.type === 'ai' ? 'bg-primary animate-pulse' : log.type === 'error' ? 'bg-destructive' : log.type === 'success' ? 'bg-secondary' : 'bg-muted-foreground'
                       )} />
-                      <p className="text-[9px] font-black text-muted-foreground/50 tracking-widest uppercase">
-                        {log.timestamp.toLocaleTimeString()}
-                      </p>
-                      <p className="text-xs font-medium leading-relaxed text-foreground/80 mt-1.5">{log.message}</p>
+                      <p className="text-[9px] font-black text-muted-foreground/50 tracking-widest uppercase">{log.timestamp.toLocaleTimeString()}</p>
+                      <p className="text-[10px] font-medium leading-relaxed text-foreground/80 mt-1">{log.message}</p>
                     </div>
                   ))}
                 </div>
@@ -419,7 +342,6 @@ export default function StudioDashboard() {
           </div>
         )}
       </main>
-
       <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
@@ -428,7 +350,7 @@ export default function StudioDashboard() {
 function Metric({ label, value, icon }: { label: string, value: string | number, icon: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 group">
-      <span className="text-primary/70 group-hover:scale-110 transition-transform">{icon}</span>
+      <span className="text-primary group-hover:scale-110 transition-transform">{icon}</span>
       <div className="flex flex-col">
         <span className="text-[8px] font-black uppercase tracking-[0.1em] text-muted-foreground/60 leading-none mb-1">{label}</span>
         <span className="text-xs font-code font-black text-foreground/90">{value}</span>

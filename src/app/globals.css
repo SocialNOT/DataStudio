@@ -4,26 +4,50 @@
 
 @layer base {
   :root {
-    --background: 240 14% 10%;
+    /* Light Mode - Indian Tricolor Theme */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 98%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 30 100% 50%; /* Saffron */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 115 94% 35%; /* Green */
+    --secondary-foreground: 0 0% 100%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 115 94% 35%; /* Green */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 30 100% 50%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    /* Dark Mode - Indian Tricolor Palette on Dark Base */
+    --background: 240 14% 6%;
     --foreground: 0 0% 98%;
-    --card: 240 14% 12%;
+    --card: 240 14% 10%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 14% 10%;
+    --popover: 240 14% 6%;
     --popover-foreground: 0 0% 98%;
-    --primary: 245 56% 70%;
-    --primary-foreground: 240 14% 10%;
-    --secondary: 240 14% 18%;
+    --primary: 30 100% 60%; /* Bright Saffron */
+    --primary-foreground: 240 14% 6%;
+    --secondary: 115 80% 40%; /* Vibrant Green */
     --secondary-foreground: 0 0% 98%;
     --muted: 240 14% 15%;
     --muted-foreground: 240 5% 65%;
-    --accent: 215 81% 60%;
+    --accent: 115 80% 40%;
     --accent-foreground: 0 0% 98%;
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --border: 240 14% 18%;
     --input: 240 14% 18%;
-    --ring: 245 56% 70%;
-    --radius: 0.75rem;
+    --ring: 30 100% 60%;
   }
 }
 
@@ -32,12 +56,14 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body antialiased;
+    @apply bg-background text-foreground font-body antialiased overflow-hidden;
+    height: 100dvh;
+    width: 100vw;
   }
 }
 
 .glass-panel {
-  @apply bg-card/40 backdrop-blur-xl border border-white/5 shadow-2xl;
+  @apply bg-card/60 backdrop-blur-xl border border-white/5 shadow-2xl;
 }
 
 .workspace-panel {
@@ -68,4 +94,8 @@
 
 .glow-text {
   text-shadow: 0 0 15px hsl(var(--primary) / 0.5);
+}
+
+.tricolor-gradient {
+  background: linear-gradient(to right, #FF9933 0%, #FFFFFF 50%, #138808 100%);
 }
