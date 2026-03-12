@@ -3,16 +3,68 @@
   "entities": {
     "UserProfile": {
       "title": "User Profile",
-      "description": "Information about a registered user in Mitsara Data Studio.",
+      "description": "Information about a registered user.",
       "type": "object",
       "properties": {
-        "uid": { "type": "string", "description": "The unique Firebase Auth UID." },
-        "displayName": { "type": "string", "description": "The user's display name." },
-        "email": { "type": "string", "format": "email", "description": "The user's email address." },
-        "photoURL": { "type": "string", "description": "The URL to the user's profile picture." },
-        "createdAt": { "type": "string", "format": "date-time", "description": "The time the profile was created." }
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "email"]
+    },
+    "Dataset": {
+      "title": "Dataset",
+      "description": "A collection of processed knowledge sources.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "description": { "type": "string" },
+        "currentVersion": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "ownerId"]
+    },
+    "DatasetVersion": {
+      "title": "Dataset Version",
+      "description": "A specific snapshot/version of a dataset.",
+      "type": "object",
+      "properties": {
+        "version": { "type": "string" },
+        "datasetId": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "published", "archived"] },
+        "chunkCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["version", "datasetId"]
+    },
+    "Chunk": {
+      "title": "Knowledge Chunk",
+      "description": "A semantically coherent unit of text with metadata.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "datasetId": { "type": "string" },
+        "version": { "type": "string" },
+        "text": { "type": "string" },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "topic": { "type": "string" },
+            "keyConcepts": { "type": "array", "items": { "type": "string" } },
+            "author": { "type": "string" },
+            "source": { "type": "string" },
+            "language": { "type": "string" },
+            "period": { "type": "string" },
+            "domain": { "type": "string" }
+          }
+        }
+      },
+      "required": ["id", "text"]
     }
   },
   "auth": {
@@ -22,6 +74,18 @@
     "/users/{userId}": {
       "schema": "UserProfile",
       "description": "User profile document storage."
+    },
+    "/datasets/{datasetId}": {
+      "schema": "Dataset",
+      "description": "Dataset root metadata."
+    },
+    "/datasets/{datasetId}/versions/{versionId}": {
+      "schema": "DatasetVersion",
+      "description": "Dataset version tracking."
+    },
+    "/datasets/{datasetId}/versions/{versionId}/chunks/{chunkId}": {
+      "schema": "Chunk",
+      "description": "Individual knowledge units for RAG/Training."
     }
   }
 }

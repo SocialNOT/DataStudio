@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -18,11 +19,10 @@ import {
   History, 
   Settings, 
   Bell, 
-  User, 
   Moon, 
   Sun,
-  ShieldCheck,
-  LogIn
+  LogIn,
+  Layers
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -37,13 +37,26 @@ export type LogEntry = {
   type: 'info' | 'success' | 'error' | 'ai';
 };
 
+export type ChunkMetadata = {
+  topic: string;
+  keyConcepts: string[];
+  author?: string;
+  source?: string;
+  language?: string;
+  period?: string;
+  domain?: string;
+};
+
 export type PipelineState = {
   rawText: string;
   processedText: string;
-  chunks: { text: string; metadata: any }[];
+  chunks: { text: string; metadata: ChunkMetadata }[];
   status: 'idle' | 'uploading' | 'processing' | 'completed' | 'error';
   fileName?: string;
   fileType?: string;
+  datasetName: string;
+  version: string;
+  globalMetadata: Partial<ChunkMetadata>;
   logs: LogEntry[];
 };
 
@@ -61,18 +74,23 @@ export default function StudioDashboard() {
     processedText: '',
     chunks: [],
     status: 'idle',
+    datasetName: 'Untitled Dataset',
+    version: '1.0.0',
+    globalMetadata: {
+      language: 'english',
+      domain: 'Knowledge Base',
+    },
     logs: [],
   });
 
   useEffect(() => {
     setMounted(true);
-    // Move the initial log here to avoid hydration mismatch
     setState(prev => ({
       ...prev,
       logs: [{ 
         id: 'init', 
         timestamp: new Date(), 
-        message: 'Mitsara Engine v1.0 initialized. Neural core operational.', 
+        message: 'Mitsara Engine v1.1 initialized. Ingestion core ready.', 
         type: 'info' 
       }]
     }));
@@ -91,7 +109,7 @@ export default function StudioDashboard() {
       
       if (updates.status && updates.status !== prev.status) {
         const logId = Math.random().toString(36).substr(2, 9);
-        const statusMsg = `Inertial shift: Pipeline status ${updates.status.toUpperCase()}`;
+        const statusMsg = `Pipeline shift: ${updates.status.toUpperCase()}`;
         newState.logs = [
           { 
             id: logId, 
@@ -154,40 +172,9 @@ export default function StudioDashboard() {
 
   if (!mounted) return <div className="h-screen w-screen bg-background" />;
 
-  if (isMobile) {
-    return (
-      <div className="flex h-screen flex-col bg-background">
-        <header className="flex h-14 items-center justify-between border-b bg-card px-4 shrink-0">
-          <div className="flex items-center gap-2">
-            <BrainCircuit className="h-5 w-5 text-primary" />
-            <h1 className="font-headline text-lg font-bold">Mitsara</h1>
-          </div>
-          <Button size="icon" variant="ghost" onClick={() => setSettingsOpen(true)}>
-             <Settings className="h-5 w-5" />
-          </Button>
-        </header>
-        <Tabs defaultValue="upload" className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex-1 overflow-hidden">
-            <TabsContent value="upload" className="m-0 h-full overflow-y-auto"><UploadPanel state={state} updateState={updateState} /></TabsContent>
-            <TabsContent value="process" className="m-0 h-full overflow-y-auto"><ProcessingPanel state={state} updateState={updateState} /></TabsContent>
-            <TabsContent value="preview" className="m-0 h-full overflow-hidden"><PreviewPanel state={state} updateState={updateState} /></TabsContent>
-            <TabsContent value="export" className="m-0 h-full overflow-y-auto"><ExportPanel state={state} updateState={updateState} /></TabsContent>
-          </div>
-          <TabsList className="h-16 w-full rounded-none border-t bg-card/80 backdrop-blur-md p-1 grid grid-cols-4 shrink-0">
-            <TabsTrigger value="upload" className="flex flex-col gap-1 py-2 text-[10px]"><Upload className="h-4 w-4" />Source</TabsTrigger>
-            <TabsTrigger value="process" className="flex flex-col gap-1 py-2 text-[10px]"><Cog className="h-4 w-4" />Process</TabsTrigger>
-            <TabsTrigger value="preview" className="flex flex-col gap-1 py-2 text-[10px]"><Eye className="h-4 w-4" />Editor</TabsTrigger>
-            <TabsTrigger value="export" className="flex flex-col gap-1 py-2 text-[10px]"><Share2 className="h-4 w-4" />Deploy</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
-      <header className="flex h-14 items-center justify-between border-b bg-card/50 px-6 backdrop-blur-xl">
+      <header className="flex h-14 items-center justify-between border-b bg-card/50 px-6 backdrop-blur-xl shrink-0">
         <div className="flex items-center gap-3">
           <div className="relative group cursor-pointer">
             <div className="absolute inset-0 animate-pulse-ring rounded-lg bg-primary/20 group-hover:bg-primary/40 transition-colors" />
@@ -197,7 +184,10 @@ export default function StudioDashboard() {
           </div>
           <div>
             <h1 className="font-headline text-base font-bold tracking-tight">Mitsara <span className="text-primary glow-text">Studio</span></h1>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-medium opacity-70">Ingestion Command Center</p>
+            <div className="flex items-center gap-2 mt-0.5 opacity-70">
+              <Layers className="h-2.5 w-2.5 text-muted-foreground" />
+              <span className="text-[9px] text-muted-foreground uppercase tracking-wider font-bold">{state.datasetName} v{state.version}</span>
+            </div>
           </div>
         </div>
 
@@ -221,7 +211,7 @@ export default function StudioDashboard() {
              <div className="flex items-center gap-3 pl-4 border-l border-white/5 group cursor-pointer" onClick={() => setSettingsOpen(true)}>
                <div className="text-right">
                  <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Status</p>
-                 <p className="text-xs font-bold text-green-500">Authenticated</p>
+                 <p className="text-xs font-bold text-green-500">Active Node</p>
                </div>
                <div className="h-8 w-8 rounded-full border border-primary/20 bg-primary/10 flex items-center justify-center font-bold text-primary text-[10px]">
                  {user.displayName?.[0] || user.email?.[0] || 'A'}
@@ -229,7 +219,7 @@ export default function StudioDashboard() {
              </div>
            ) : (
              <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase tracking-widest gap-2 bg-primary/5 border-primary/20 hover:bg-primary/10" onClick={handleSignIn}>
-               <LogIn className="h-3 w-3" /> Anonymous Access
+               <LogIn className="h-3 w-3" /> Connect Node
              </Button>
            )}
         </div>
@@ -238,19 +228,19 @@ export default function StudioDashboard() {
       <div className="grid flex-1 grid-cols-12 overflow-hidden">
         <div className="col-span-10 grid grid-cols-4 gap-px bg-white/5 overflow-hidden">
           <div className="workspace-panel bg-background/20">
-             <PanelHeader icon={<Upload className="h-3.5 w-3.5" />} title="1. Source" />
+             <PanelHeader icon={<Upload className="h-3.5 w-3.5" />} title="1. Ingestion" />
              <UploadPanel state={state} updateState={updateState} />
           </div>
           <div className="workspace-panel bg-background/20">
-             <PanelHeader icon={<Cog className="h-3.5 w-3.5" />} title="2. Process" />
+             <PanelHeader icon={<Cog className="h-3.5 w-3.5" />} title="2. Intelligence" />
              <ProcessingPanel state={state} updateState={updateState} />
           </div>
           <div className="workspace-panel bg-background/20 border-l border-white/5 col-span-1">
-             <PanelHeader icon={<Eye className="h-3.5 w-3.5" />} title="3. Editor" />
+             <PanelHeader icon={<Eye className="h-3.5 w-3.5" />} title="3. Curation" />
              <PreviewPanel state={state} updateState={updateState} />
           </div>
           <div className="workspace-panel bg-background/20 border-l border-white/5">
-             <PanelHeader icon={<Share2 className="h-3.5 w-3.5" />} title="4. Deploy" />
+             <PanelHeader icon={<Share2 className="h-3.5 w-3.5" />} title="4. Delivery" />
              <ExportPanel state={state} updateState={updateState} />
           </div>
         </div>
