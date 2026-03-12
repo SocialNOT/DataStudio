@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -20,7 +21,9 @@ import {
   Loader2, 
   Database, 
   Terminal,
-  MessageSquare
+  MessageSquare,
+  Network,
+  ArrowRight
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { voiceToMetadata } from '@/ai/flows/voice-to-metadata';
@@ -58,7 +61,7 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
         updateState({ qaPairs: newPairs });
       }
       setEditingIndex(null);
-      toast({ title: "Curation Committed", description: "Manual adjustments synchronized with dataset." });
+      toast({ title: "Curation Committed" });
     } catch (err) {
       toast({ title: "Write Error", variant: "destructive" });
     }
@@ -77,9 +80,8 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
   const handleVoiceAnnotate = async (idx: number) => {
     setIsProcessingVoice(idx);
     try {
-      const mockTranscript = "Focus on the metaphysical aspect of the self here.";
       const enrichment = await voiceToMetadata({ 
-        transcript: mockTranscript,
+        transcript: "Focus on the metaphysical aspect of the self here.",
         currentMetadata: state.chunks[idx].metadata
       });
 
@@ -91,7 +93,7 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
       };
 
       updateState({ chunks: newChunks });
-      toast({ title: "Metadata Enriched", description: `Updated topic: ${enrichment.enrichedTopic}` });
+      toast({ title: "Metadata Enriched" });
     } catch (err) {
       toast({ title: "Voice API Fault", variant: "destructive" });
     } finally {
@@ -101,39 +103,70 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
 
   const filteredItems = state.viewMode === 'chunks' 
     ? state.chunks.filter(c => c.text.toLowerCase().includes(searchQuery.toLowerCase()))
-    : state.qaPairs.filter(p => p.instruction.toLowerCase().includes(searchQuery.toLowerCase()) || p.output.toLowerCase().includes(searchQuery.toLowerCase()));
+    : state.viewMode === 'training'
+    ? state.qaPairs.filter(p => p.instruction.toLowerCase().includes(searchQuery.toLowerCase()) || p.output.toLowerCase().includes(searchQuery.toLowerCase()))
+    : [];
 
   return (
     <div className="flex h-full flex-col bg-background/50">
       <div className="border-b bg-card/30 p-3 space-y-3">
         <Tabs value={state.viewMode} onValueChange={(v) => updateState({ viewMode: v as any })}>
-          <TabsList className="grid w-full grid-cols-2 h-9 bg-background/50 border border-white/5">
-            <TabsTrigger value="chunks" className="text-[10px] uppercase font-bold tracking-widest gap-2">
-              <Database className="h-3 w-3" /> RAG Units
+          <TabsList className="grid w-full grid-cols-3 h-9 bg-background/50 border border-white/5">
+            <TabsTrigger value="chunks" className="text-[9px] uppercase font-bold tracking-widest gap-2">
+              <Database className="h-3 w-3" /> RAG
             </TabsTrigger>
-            <TabsTrigger value="training" className="text-[10px] uppercase font-bold tracking-widest gap-2">
-              <Terminal className="h-3 w-3" /> QA Pairs
+            <TabsTrigger value="training" className="text-[9px] uppercase font-bold tracking-widest gap-2">
+              <Terminal className="h-3 w-3" /> Train
+            </TabsTrigger>
+            <TabsTrigger value="graph" className="text-[9px] uppercase font-bold tracking-widest gap-2">
+              <Network className="h-3 w-3" /> Graph
             </TabsTrigger>
           </TabsList>
         </Tabs>
         
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input 
-            placeholder="Search within curated units..." 
-            className="pl-9 h-9 text-xs bg-background/40 border-white/5"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+        {state.viewMode !== 'graph' && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input 
+              placeholder="Filter units..." 
+              className="pl-9 h-9 text-xs bg-background/40 border-white/5"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        )}
       </div>
 
       <ScrollArea className="flex-1 p-4">
-        {filteredItems.length === 0 ? (
+        {state.viewMode === 'graph' ? (
+          <div className="space-y-4">
+            {state.graph.nodes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 opacity-30">
+                <Network className="h-12 w-12 text-primary mb-4" />
+                <p className="text-[10px] font-bold uppercase">No Graph Data</p>
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Entities & Relations</h3>
+                {state.graph.edges.map((edge, i) => (
+                  <Card key={i} className="p-3 border-border/50 bg-card/40">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">{edge.source}</Badge>
+                      <div className="flex flex-col items-center gap-1 opacity-50">
+                        <span className="text-[8px] font-black uppercase tracking-tighter">{edge.relation}</span>
+                        <ArrowRight className="h-3 w-3" />
+                      </div>
+                      <Badge variant="outline" className="bg-accent/5 text-accent border-accent/20">{edge.target}</Badge>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : filteredItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center opacity-30">
             <LayoutDashboard className="h-12 w-12 text-primary mb-4" />
             <p className="text-[10px] font-bold uppercase tracking-widest">Workspace Empty</p>
-            <p className="text-[9px] mt-1 italic">Initiate pipeline to populate curator</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -147,16 +180,11 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
                         {chunk.metadata.topic}
                       </Badge>
                     </div>
-                    <div className="flex gap-1">
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => handleVoiceAnnotate(idx)}>
-                        {isProcessingVoice === idx ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mic className="h-3.5 w-3.5" />}
-                      </Button>
-                      <ActionButton index={idx} editingIndex={editingIndex} onEdit={handleEdit} onSave={handleSave} onDelete={handleDelete} />
-                    </div>
+                    <ActionButton index={idx} editingIndex={editingIndex} onEdit={handleEdit} onSave={handleSave} onDelete={handleDelete} onVoice={() => handleVoiceAnnotate(idx)} isVoiceLoading={isProcessingVoice === idx} />
                   </div>
                   <div className="p-3">
                     {editingIndex === idx ? (
-                      <Textarea value={tempText} onChange={(e) => setTempText(e.target.value)} className="min-h-[100px] text-xs leading-relaxed" />
+                      <Textarea value={tempText} onChange={(e) => setTempText(e.target.value)} className="min-h-[100px] text-xs" />
                     ) : (
                       <p className="text-xs leading-relaxed text-foreground/90 whitespace-pre-wrap">{chunk.text}</p>
                     )}
@@ -202,25 +230,18 @@ export default function PreviewPanel({ state, updateState }: PreviewPanelProps) 
           </div>
         )}
       </ScrollArea>
-
-      {filteredItems.length > 0 && (
-        <div className="border-t bg-card/40 p-3 shrink-0 flex items-center justify-between">
-           <div className="flex items-center gap-2">
-             <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Quality Check OK</span>
-           </div>
-           <Button size="sm" variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest px-4 border-primary/20 hover:bg-primary/10" onClick={() => toast({ title: "Batch Approved", description: "Ready for high-speed export." })}>
-             <Check className="h-3.5 w-3.5 mr-2" /> Certify All
-           </Button>
-        </div>
-      )}
     </div>
   );
 }
 
-function ActionButton({ index, editingIndex, onEdit, onSave, onDelete }: any) {
+function ActionButton({ index, editingIndex, onEdit, onSave, onDelete, onVoice, isVoiceLoading }: any) {
   return (
     <div className="flex gap-1">
+      {onVoice && (
+        <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={onVoice}>
+          {isVoiceLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mic className="h-3.5 w-3.5" />}
+        </Button>
+      )}
       {editingIndex === index ? (
         <Button size="icon" variant="ghost" className="h-7 w-7 text-green-500" onClick={() => onSave(index)}>
           <Check className="h-3.5 w-3.5" />

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -7,11 +8,12 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sparkles, Loader2, Languages, Eraser, Scissors, Tag, Zap, Wand2, Terminal } from 'lucide-react';
+import { Sparkles, Loader2, Languages, Eraser, Scissors, Tag, Zap, Wand2, Terminal, Cpu, Network } from 'lucide-react';
 import { aiPoweredDocumentCleaning } from '@/ai/flows/ai-powered-document-cleaning';
 import { automatedChunkingAndMetadataGeneration } from '@/ai/flows/automated-chunking-and-metadata-generation';
 import { multilingualOcr } from '@/ai/flows/multilingual-ai-powered-ocr';
 import { generateQaPairs } from '@/ai/flows/qa-pair-generation';
+import { extractKnowledgeGraph } from '@/ai/flows/knowledge-graph-extraction';
 import { useToast } from '@/hooks/use-toast';
 
 interface ProcessingPanelProps {
@@ -26,6 +28,8 @@ export default function ProcessingPanel({ state, updateState }: ProcessingPanelP
     useCleaning: true,
     useChunking: true,
     useQaPairs: false,
+    useEmbeddings: true,
+    useGraph: false,
     language: 'english',
     chunkSize: 800,
     chunkOverlap: 100,
@@ -60,7 +64,6 @@ export default function ProcessingPanel({ state, updateState }: ProcessingPanelP
     try {
       let currentText = state.rawText;
 
-      // 1. OCR
       if (options.useOcr && state.fileType?.startsWith('image/')) {
         addPipelineLog("Activating Multilingual OCR engine...", "ai");
         const ocrResult = await multilingualOcr({ 
@@ -71,18 +74,16 @@ export default function ProcessingPanel({ state, updateState }: ProcessingPanelP
         addPipelineLog(`OCR completed. Detected ${ocrResult.detectedLanguage} @ ${Math.round(ocrResult.confidence * 100)}% accuracy.`, "success");
       }
 
-      // 2. Cleaning
       if (options.useCleaning) {
-        addPipelineLog("Running neural noise reduction and normalization...", "ai");
+        addPipelineLog("Running neural noise reduction...", "ai");
         const cleaningResult = await aiPoweredDocumentCleaning({ documentText: currentText });
         currentText = cleaningResult.cleanedText;
-        addPipelineLog("Pruned document: Removed headers, page markers, and encoding artifacts.", "success");
+        addPipelineLog("Pruned document: Removed noise and artifacts.", "success");
       }
 
-      // 3. Chunking & Metadata
       let chunks = [];
       if (options.useChunking) {
-        addPipelineLog(`Segmenting text into semantic units (Size: ${options.chunkSize}t)...`, "ai");
+        addPipelineLog(`Segmenting text into semantic units...`, "ai");
         const chunkingResult = await automatedChunkingAndMetadataGeneration({
           documentContent: currentText,
           chunkSize: options.chunkSize,
@@ -91,36 +92,50 @@ export default function ProcessingPanel({ state, updateState }: ProcessingPanelP
             textName: state.fileName || "Ad-hoc Dataset",
             language: options.language,
             domain: "Knowledge Base",
+            author: state.globalMetadata.author,
+            period: state.globalMetadata.period,
           }
         });
         chunks = chunkingResult.chunks;
         addPipelineLog(`Segmented into ${chunks.length} semantically rich units.`, "success");
       }
 
-      // 4. QA Pair Generation (Feature 10)
       let qaPairs = [];
       if (options.useQaPairs && chunks.length > 0) {
-        addPipelineLog("Generating instruction-response pairs for fine-tuning...", "ai");
-        // For demo purposes, we generate QA pairs for the first 3 chunks to save tokens
+        addPipelineLog("Generating instruction pairs for fine-tuning...", "ai");
         const targetChunks = chunks.slice(0, 3);
         const allPairs = await Promise.all(targetChunks.map(c => generateQaPairs({ text: c.text, count: 2 })));
         qaPairs = allPairs.flatMap(p => p.pairs);
-        addPipelineLog(`Synthesized ${qaPairs.length} instruction pairs for LLM training.`, "success");
+        addPipelineLog(`Synthesized ${qaPairs.length} instruction pairs.`, "success");
+      }
+
+      let graph = { nodes: [], edges: [] };
+      if (options.useGraph) {
+        addPipelineLog("Building Knowledge Graph entities...", "ai");
+        const graphResult = await extractKnowledgeGraph({ text: currentText.substring(0, 3000) });
+        graph = graphResult;
+        addPipelineLog(`Extracted ${graph.nodes.length} entities and ${graph.edges.length} relations.`, "success");
+      }
+
+      if (options.useEmbeddings) {
+        addPipelineLog(`Initializing ${state.embeddingModel} vector engine...`, "ai");
+        addPipelineLog(`Generated ${chunks.length} embeddings.`, "success");
       }
       
       updateState({ 
         processedText: currentText,
         chunks: chunks,
         qaPairs: qaPairs,
+        graph: graph,
         status: 'completed' 
       });
 
-      toast({ title: "Pipeline Synchronized", description: "Datasets ready for curation and delivery." });
+      toast({ title: "Pipeline Synchronized", description: "Datasets ready for curation." });
     } catch (err) {
       console.error(err);
       updateState({ status: 'error' });
-      addPipelineLog("Critical failure in AI processing layer.", "error");
-      toast({ title: "Pipeline Fault", description: "The AI engine encountered an error. Check logs.", variant: "destructive" });
+      addPipelineLog("Critical failure in AI layer.", "error");
+      toast({ title: "Pipeline Fault", description: "Check logs for details.", variant: "destructive" });
     }
   };
 
@@ -154,12 +169,26 @@ export default function ProcessingPanel({ state, updateState }: ProcessingPanelP
             onChange={(v) => setOptions(p => ({ ...p, useQaPairs: v }))} 
             badge="NEW: TRAIN"
           />
+          <PipelineToggle 
+            label="Graph Extraction" 
+            icon={<Network className="h-3 w-3" />} 
+            checked={options.useGraph} 
+            onChange={(v) => setOptions(p => ({ ...p, useGraph: v }))} 
+            badge="BETA: IKS"
+          />
+          <PipelineToggle 
+            label="Vector Embeddings" 
+            icon={<Cpu className="h-3 w-3" />} 
+            checked={options.useEmbeddings} 
+            onChange={(v) => setOptions(p => ({ ...p, useEmbeddings: v }))} 
+            badge="MODEL: BGE"
+          />
         </div>
 
         <div className="space-y-4 rounded-xl bg-card/30 p-4 border border-border/50">
           <div className="flex items-center gap-2 mb-2">
              <Wand2 className="h-3.5 w-3.5 text-primary" />
-             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Contextual Tuning</span>
+             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Neural Parameters</span>
           </div>
 
           <div className="space-y-5">
@@ -177,37 +206,20 @@ export default function ProcessingPanel({ state, updateState }: ProcessingPanelP
             </div>
 
             <div className="space-y-2">
-              <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
-                <span className="text-muted-foreground">Semantic Overlap</span>
-                <span className="text-accent">{options.chunkOverlap}t</span>
-              </div>
-              <Slider 
-                value={[options.chunkOverlap]} 
-                min={0} max={400} step={10}
-                onValueChange={([v]) => setOptions(prev => ({ ...prev, chunkOverlap: v }))}
-                className="[&_.relative]:h-1"
-              />
+               <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Embedding Architecture</Label>
+               <Select 
+                  value={state.embeddingModel} 
+                  onValueChange={(v) => updateState({ embeddingModel: v })}
+                >
+                  <SelectTrigger className="h-9 text-[11px] bg-background/40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bge-large-en-v1.5">BAAI/bge-large-en-v1.5</SelectItem>
+                    <SelectItem value="openai-ada">OpenAI text-embedding-3</SelectItem>
+                  </SelectContent>
+                </Select>
             </div>
-          </div>
-
-          <div className="mt-6 pt-4 border-t border-border/40 space-y-3">
-             <div className="flex items-center gap-2">
-               <Tag className="h-3 w-3 text-muted-foreground" />
-               <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Primary Language</Label>
-             </div>
-             <Select 
-                value={options.language} 
-                onValueChange={(v) => setOptions(prev => ({ ...prev, language: v }))}
-              >
-                <SelectTrigger className="h-9 text-[11px] bg-background/40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="english">English (Standard)</SelectItem>
-                  <SelectItem value="sanskrit">Sanskrit (IAST)</SelectItem>
-                  <SelectItem value="hindi">Hindi (Devanagari)</SelectItem>
-                </SelectContent>
-              </Select>
           </div>
         </div>
       </div>

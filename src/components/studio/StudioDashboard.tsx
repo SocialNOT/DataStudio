@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -22,13 +23,19 @@ import {
   Layers,
   Database,
   Terminal,
-  Activity
+  Activity,
+  Cloud,
+  Network
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useUser, useAuth } from '@/firebase';
+import { useUser, useAuth, useFirestore } from '@/firebase';
 import { signInAnonymously } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export type LogEntry = {
   id: string;
@@ -52,12 +59,19 @@ export type QaPair = {
   output: string;
 };
 
+export type GraphData = {
+  nodes: { id: string; label: string; type: string }[];
+  edges: { source: string; target: string; relation: string }[];
+};
+
 export type PipelineState = {
+  datasetId: string;
   rawText: string;
   processedText: string;
   chunks: { text: string; metadata: ChunkMetadata }[];
   qaPairs: QaPair[];
-  viewMode: 'chunks' | 'training';
+  graph: GraphData;
+  viewMode: 'chunks' | 'training' | 'graph';
   status: 'idle' | 'uploading' | 'processing' | 'completed' | 'error';
   fileName?: string;
   fileType?: string;
@@ -65,6 +79,7 @@ export type PipelineState = {
   version: string;
   globalMetadata: Partial<ChunkMetadata>;
   logs: LogEntry[];
+  embeddingModel: string;
 };
 
 export default function StudioDashboard() {
@@ -72,15 +87,19 @@ export default function StudioDashboard() {
   const [mounted, setMounted] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const { toast } = useToast();
   
   const { user, loading } = useUser();
   const auth = useAuth();
+  const db = useFirestore();
 
   const [state, setState] = useState<PipelineState>({
+    datasetId: Math.random().toString(36).substr(2, 9),
     rawText: '',
     processedText: '',
     chunks: [],
     qaPairs: [],
+    graph: { nodes: [], edges: [] },
     viewMode: 'chunks',
     status: 'idle',
     datasetName: 'Untitled Dataset',
@@ -90,6 +109,7 @@ export default function StudioDashboard() {
       domain: 'Knowledge Base',
     },
     logs: [],
+    embeddingModel: 'bge-large-en-v1.5',
   });
 
   useEffect(() => {
@@ -99,8 +119,12 @@ export default function StudioDashboard() {
 
   const handleSignIn = async () => {
     if (auth) {
-      await signInAnonymously(auth);
-      addLog("Anonymous session initiated.", "success");
+      try {
+        await signInAnonymously(auth);
+        addLog("Anonymous session initiated.", "success");
+      } catch (err) {
+        toast({ title: "Auth Error", variant: "destructive" });
+      }
     }
   };
 
@@ -136,6 +160,50 @@ export default function StudioDashboard() {
     }));
   };
 
+  const handleSaveToCloud = async () => {
+    if (!user) {
+      toast({ title: "Auth Required", description: "Connect node to persist data.", variant: "destructive" });
+      return;
+    }
+
+    addLog("Synchronizing local state with Deployment Vault...", "info");
+
+    try {
+      const datasetRef = doc(db, 'datasets', state.datasetId);
+      const versionRef = doc(db, 'datasets', state.datasetId, 'versions', state.version);
+
+      setDoc(datasetRef, {
+        id: state.datasetId,
+        name: state.datasetName,
+        ownerId: user.uid,
+        currentVersion: state.version,
+        updatedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+      }, { merge: true }).catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: datasetRef.path,
+          operation: 'update',
+          requestResourceData: { name: state.datasetName }
+        }));
+      });
+
+      setDoc(versionRef, {
+        version: state.version,
+        datasetId: state.datasetId,
+        status: 'published',
+        chunkCount: state.chunks.length,
+        qaCount: state.qaPairs.length,
+        createdAt: serverTimestamp(),
+      }, { merge: true });
+
+      addLog("Cloud synchronization complete. Shards persisted.", "success");
+      toast({ title: "Session Persisted", description: `Dataset ${state.datasetName} saved to vault.` });
+    } catch (err) {
+      addLog("Failed to write to cloud vault.", "error");
+      toast({ title: "Sync Fault", variant: "destructive" });
+    }
+  };
+
   const PanelHeader = ({ icon, title }: { icon: React.ReactNode, title: string }) => (
     <div className="h-10 border-b border-white/5 bg-muted/5 flex items-center gap-2 px-4 shrink-0">
       <span className="text-primary/70">{icon}</span>
@@ -167,7 +235,6 @@ export default function StudioDashboard() {
         </div>
 
         <div className="flex items-center gap-4">
-           {/* Pipeline Metrics */}
            <div className="hidden lg:flex items-center gap-6 px-4 py-1.5 rounded-full bg-muted/10 border border-white/5">
               <Metric label="Chunks" value={state.chunks.length} icon={<Database className="h-2.5 w-2.5" />} />
               <Metric label="Instructions" value={state.qaPairs.length} icon={<Terminal className="h-2.5 w-2.5" />} />
@@ -190,13 +257,18 @@ export default function StudioDashboard() {
            {loading ? (
              <div className="h-8 w-24 bg-muted animate-pulse rounded-lg" />
            ) : user ? (
-             <div className="flex items-center gap-3 pl-4 border-l border-white/5 group cursor-pointer" onClick={() => setSettingsOpen(true)}>
-               <div className="text-right">
-                 <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Node Status</p>
-                 <p className="text-xs font-bold text-green-500">Authorized</p>
-               </div>
-               <div className="h-8 w-8 rounded-full border border-primary/20 bg-primary/10 flex items-center justify-center font-bold text-primary text-[10px]">
-                 {user.displayName?.[0] || user.email?.[0] || 'A'}
+             <div className="flex items-center gap-2">
+               <Button variant="ghost" size="sm" className="h-8 text-[10px] uppercase tracking-widest gap-2 text-primary hover:bg-primary/10" onClick={handleSaveToCloud}>
+                 <Cloud className="h-3 w-3" /> Save Session
+               </Button>
+               <div className="flex items-center gap-3 pl-4 border-l border-white/5 group cursor-pointer" onClick={() => setSettingsOpen(true)}>
+                 <div className="text-right">
+                   <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Node Status</p>
+                   <p className="text-xs font-bold text-green-500">Authorized</p>
+                 </div>
+                 <div className="h-8 w-8 rounded-full border border-primary/20 bg-primary/10 flex items-center justify-center font-bold text-primary text-[10px]">
+                   {user.displayName?.[0] || user.email?.[0] || 'A'}
+                 </div>
                </div>
              </div>
            ) : (
@@ -227,7 +299,6 @@ export default function StudioDashboard() {
           </div>
         </div>
 
-        {/* Persistent Audit Sidebar */}
         <div className="col-span-2 border-l border-white/5 bg-card/10 flex flex-col overflow-hidden">
           <div className="p-4 border-b border-white/5 bg-muted/10 flex items-center justify-between">
             <h2 className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">

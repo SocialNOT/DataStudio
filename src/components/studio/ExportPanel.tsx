@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -6,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { 
   Download, 
   Database, 
@@ -19,6 +21,8 @@ import {
   Rocket
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useFirestore, useUser } from '@/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 interface ExportPanelProps {
   state: PipelineState;
@@ -27,11 +31,13 @@ interface ExportPanelProps {
 
 export default function ExportPanel({ state, updateState }: ExportPanelProps) {
   const { toast } = useToast();
+  const { user } = useUser();
+  const db = useFirestore();
   const [deploying, setDeploying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [dbType, setDbType] = useState('chroma');
 
-  const handleDeploy = () => {
+  const handleDeploy = async () => {
     if (!state.chunks.length && !state.qaPairs.length) {
       toast({ title: "Vault Empty", description: "Initialize pipeline before deployment.", variant: "destructive" });
       return;
@@ -39,17 +45,48 @@ export default function ExportPanel({ state, updateState }: ExportPanelProps) {
 
     setDeploying(true);
     setProgress(0);
-    const interval = setInterval(() => {
+    
+    // Simulate complex vector indexing
+    const interval = setInterval(async () => {
       setProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval);
-          setDeploying(false);
-          toast({ title: "Node Synchronized", description: `Data broadcasted to ${dbType.toUpperCase()} cluster.` });
+          finalizeDeployment();
           return 100;
         }
         return prev + 10;
       });
-    }, 400);
+    }, 300);
+  };
+
+  const finalizeDeployment = async () => {
+    setDeploying(false);
+    
+    if (user) {
+      // Feature 9: Vector Database Integration (Simulated record)
+      const deploymentRef = doc(db, 'datasets', state.datasetId, 'deployments', Date.now().toString());
+      await setDoc(deploymentRef, {
+        target: dbType,
+        status: 'synced',
+        timestamp: serverTimestamp(),
+        chunkCount: state.chunks.length,
+        version: state.version
+      });
+    }
+
+    toast({ 
+      title: "Node Synchronized", 
+      description: `Data broadcasted to ${dbType.toUpperCase()} cluster.` 
+    });
+    
+    updateState({
+      logs: [{
+        id: Math.random().toString(36).substr(2, 9),
+        timestamp: new Date(),
+        message: `Broadcasted to ${dbType.toUpperCase()} infrastructure successfully.`,
+        type: 'success'
+      }, ...state.logs]
+    });
   };
 
   return (
@@ -80,16 +117,9 @@ export default function ExportPanel({ state, updateState }: ExportPanelProps) {
 
           <div className="space-y-2">
              <Label className="text-[9px] font-bold uppercase text-muted-foreground/80">Embedding Protocol</Label>
-             <Select defaultValue="bge-large">
-              <SelectTrigger className="h-9 text-xs bg-background/40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="bge-large">BAAI/bge-large-en-v1.5</SelectItem>
-                <SelectItem value="openai">OpenAI Text-Embedding-3</SelectItem>
-                <SelectItem value="instructor">Instructor-XL (Dynamic)</SelectItem>
-              </SelectContent>
-            </Select>
+             <div className="h-9 px-3 rounded-md bg-background/40 border border-white/5 flex items-center text-xs text-primary font-bold">
+               {state.embeddingModel.toUpperCase()}
+             </div>
           </div>
         </div>
 
@@ -99,13 +129,18 @@ export default function ExportPanel({ state, updateState }: ExportPanelProps) {
               <span>Broadcasting Shards</span>
               <span>{progress}%</span>
             </div>
-            <Progress value={progress} className="h-1 bg-white/5" />
+            <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-primary transition-all duration-300" 
+                style={{ width: `${progress}%` }} 
+              />
+            </div>
           </div>
         )}
 
         <Button 
-          variant="accent" 
-          className="w-full h-11 shadow-lg shadow-accent/20 group overflow-hidden" 
+          variant="default" 
+          className="w-full h-11 bg-accent hover:bg-accent/80 text-white shadow-lg shadow-accent/20 group overflow-hidden" 
           onClick={handleDeploy}
           disabled={deploying || (!state.chunks.length && !state.qaPairs.length)}
         >

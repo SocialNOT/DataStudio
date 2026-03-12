@@ -65,6 +65,29 @@
         }
       },
       "required": ["id", "text"]
+    },
+    "GraphNode": {
+      "title": "Graph Node",
+      "description": "A semantic entity extracted from the text.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "type": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "label"]
+    },
+    "GraphEdge": {
+      "title": "Graph Edge",
+      "description": "A relationship between two semantic entities.",
+      "type": "object",
+      "properties": {
+        "source": { "type": "string" },
+        "target": { "type": "string" },
+        "relation": { "type": "string" }
+      },
+      "required": ["source", "target", "relation"]
     }
   },
   "auth": {
@@ -86,6 +109,10 @@
     "/datasets/{datasetId}/versions/{versionId}/chunks/{chunkId}": {
       "schema": "Chunk",
       "description": "Individual knowledge units for RAG/Training."
+    },
+    "/datasets/{datasetId}/versions/{versionId}/graph": {
+      "schema": "GraphNode",
+      "description": "Knowledge graph metadata for a specific version."
     }
   }
 }
