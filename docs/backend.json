@@ -42,6 +42,19 @@
       },
       "required": ["version", "datasetId"]
     },
+    "Backup": {
+      "title": "Dataset Backup",
+      "description": "A recovery snapshot of the dataset state.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "datasetId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "snapshot": { "type": "object" },
+        "checksum": { "type": "string" }
+      },
+      "required": ["id", "datasetId", "timestamp"]
+    },
     "Chunk": {
       "title": "Knowledge Chunk",
       "description": "A semantically coherent unit of text with metadata.",
@@ -56,6 +69,7 @@
           "properties": {
             "topic": { "type": "string" },
             "keyConcepts": { "type": "array", "items": { "type": "string" } },
+            "status": { "type": "string", "enum": ["draft", "verified", "flagged"] },
             "author": { "type": "string" },
             "source": { "type": "string" },
             "language": { "type": "string" },
@@ -65,29 +79,6 @@
         }
       },
       "required": ["id", "text"]
-    },
-    "GraphNode": {
-      "title": "Graph Node",
-      "description": "A semantic entity extracted from the text.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "label": { "type": "string" },
-        "type": { "type": "string" },
-        "description": { "type": "string" }
-      },
-      "required": ["id", "label"]
-    },
-    "GraphEdge": {
-      "title": "Graph Edge",
-      "description": "A relationship between two semantic entities.",
-      "type": "object",
-      "properties": {
-        "source": { "type": "string" },
-        "target": { "type": "string" },
-        "relation": { "type": "string" }
-      },
-      "required": ["source", "target", "relation"]
     }
   },
   "auth": {
@@ -102,17 +93,13 @@
       "schema": "Dataset",
       "description": "Dataset root metadata."
     },
+    "/datasets/{datasetId}/backups/{backupId}": {
+      "schema": "Backup",
+      "description": "Historical snapshots for point-in-time recovery."
+    },
     "/datasets/{datasetId}/versions/{versionId}": {
       "schema": "DatasetVersion",
       "description": "Dataset version tracking."
-    },
-    "/datasets/{datasetId}/versions/{versionId}/chunks/{chunkId}": {
-      "schema": "Chunk",
-      "description": "Individual knowledge units for RAG/Training."
-    },
-    "/datasets/{datasetId}/versions/{versionId}/graph": {
-      "schema": "GraphNode",
-      "description": "Knowledge graph metadata for a specific version."
     }
   }
 }
