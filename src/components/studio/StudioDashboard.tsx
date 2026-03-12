@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -8,9 +7,28 @@ import UploadPanel from './UploadPanel';
 import ProcessingPanel from './ProcessingPanel';
 import PreviewPanel from './PreviewPanel';
 import ExportPanel from './ExportPanel';
-import { BrainCircuit, Upload, Cog, Eye, Share2, Activity, History } from 'lucide-react';
+import SettingsModal from './SettingsModal';
+import { 
+  BrainCircuit, 
+  Upload, 
+  Cog, 
+  Eye, 
+  Share2, 
+  Activity, 
+  History, 
+  Settings, 
+  Bell, 
+  User, 
+  Moon, 
+  Sun,
+  ShieldCheck,
+  LogIn
+} from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { useUser, useAuth } from '@/firebase';
+import { signInAnonymously } from 'firebase/auth';
 
 export type LogEntry = {
   id: string;
@@ -32,6 +50,12 @@ export type PipelineState = {
 export default function StudioDashboard() {
   const isMobile = useIsMobile();
   const [mounted, setMounted] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  
+  const { user, loading } = useUser();
+  const auth = useAuth();
+
   const [state, setState] = useState<PipelineState>({
     rawText: '',
     processedText: '',
@@ -42,16 +66,24 @@ export default function StudioDashboard() {
 
   useEffect(() => {
     setMounted(true);
+    // Move the initial log here to avoid hydration mismatch
     setState(prev => ({
       ...prev,
       logs: [{ 
         id: 'init', 
         timestamp: new Date(), 
-        message: 'Mitsara Engine v1.0 initialized. Ready for ingestion.', 
+        message: 'Mitsara Engine v1.0 initialized. Neural core operational.', 
         type: 'info' 
       }]
     }));
   }, []);
+
+  const handleSignIn = async () => {
+    if (auth) {
+      await signInAnonymously(auth);
+      addLog("Anonymous session initiated.", "success");
+    }
+  };
 
   const updateState = (updates: Partial<PipelineState>) => {
     setState((prev) => {
@@ -59,7 +91,7 @@ export default function StudioDashboard() {
       
       if (updates.status && updates.status !== prev.status) {
         const logId = Math.random().toString(36).substr(2, 9);
-        const statusMsg = `Pipeline state changed: ${updates.status.toUpperCase()}`;
+        const statusMsg = `Inertial shift: Pipeline status ${updates.status.toUpperCase()}`;
         newState.logs = [
           { 
             id: logId, 
@@ -125,9 +157,14 @@ export default function StudioDashboard() {
   if (isMobile) {
     return (
       <div className="flex h-screen flex-col bg-background">
-        <header className="flex h-14 items-center gap-3 border-b bg-card px-4 shrink-0">
-          <BrainCircuit className="h-6 w-6 text-primary" />
-          <h1 className="font-headline text-lg font-bold">Mitsara</h1>
+        <header className="flex h-14 items-center justify-between border-b bg-card px-4 shrink-0">
+          <div className="flex items-center gap-2">
+            <BrainCircuit className="h-5 w-5 text-primary" />
+            <h1 className="font-headline text-lg font-bold">Mitsara</h1>
+          </div>
+          <Button size="icon" variant="ghost" onClick={() => setSettingsOpen(true)}>
+             <Settings className="h-5 w-5" />
+          </Button>
         </header>
         <Tabs defaultValue="upload" className="flex flex-1 flex-col overflow-hidden">
           <div className="flex-1 overflow-hidden">
@@ -143,6 +180,7 @@ export default function StudioDashboard() {
             <TabsTrigger value="export" className="flex flex-col gap-1 py-2 text-[10px]"><Share2 className="h-4 w-4" />Deploy</TabsTrigger>
           </TabsList>
         </Tabs>
+        <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
       </div>
     );
   }
@@ -151,9 +189,9 @@ export default function StudioDashboard() {
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       <header className="flex h-14 items-center justify-between border-b bg-card/50 px-6 backdrop-blur-xl">
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="absolute inset-0 animate-pulse-ring rounded-lg bg-primary/20" />
-            <div className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-lg shadow-primary/30">
+          <div className="relative group cursor-pointer">
+            <div className="absolute inset-0 animate-pulse-ring rounded-lg bg-primary/20 group-hover:bg-primary/40 transition-colors" />
+            <div className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-lg shadow-primary/30 group-hover:scale-110 transition-transform">
               <BrainCircuit className="h-5 w-5" />
             </div>
           </div>
@@ -163,17 +201,37 @@ export default function StudioDashboard() {
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-4 border-l border-white/5 pl-6">
-            <div className="text-right">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase">Session ID</p>
-              <p className="text-xs font-code text-primary leading-none">MITSARA_INGEST_PROD</p>
-            </div>
-            <div className="relative">
-               <div className="absolute inset-0 bg-green-500/20 blur-sm rounded-full animate-pulse" />
-               <Activity className="h-4 w-4 text-green-500 relative" />
-            </div>
-          </div>
+        <div className="flex items-center gap-2">
+           <div className="flex items-center gap-1 bg-muted/20 p-1 rounded-lg border border-white/5 mr-4">
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground" onClick={() => setIsDarkMode(!isDarkMode)}>
+                {isDarkMode ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
+              </Button>
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground relative">
+                <Bell className="h-3.5 w-3.5" />
+                <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 bg-primary rounded-full" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground" onClick={() => setSettingsOpen(true)}>
+                <Settings className="h-3.5 w-3.5 animate-[spin_10s_linear_infinite]" />
+              </Button>
+           </div>
+
+           {loading ? (
+             <div className="h-8 w-24 bg-muted animate-pulse rounded-lg" />
+           ) : user ? (
+             <div className="flex items-center gap-3 pl-4 border-l border-white/5 group cursor-pointer" onClick={() => setSettingsOpen(true)}>
+               <div className="text-right">
+                 <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Status</p>
+                 <p className="text-xs font-bold text-green-500">Authenticated</p>
+               </div>
+               <div className="h-8 w-8 rounded-full border border-primary/20 bg-primary/10 flex items-center justify-center font-bold text-primary text-[10px]">
+                 {user.displayName?.[0] || user.email?.[0] || 'A'}
+               </div>
+             </div>
+           ) : (
+             <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase tracking-widest gap-2 bg-primary/5 border-primary/20 hover:bg-primary/10" onClick={handleSignIn}>
+               <LogIn className="h-3 w-3" /> Anonymous Access
+             </Button>
+           )}
         </div>
       </header>
 
@@ -198,6 +256,8 @@ export default function StudioDashboard() {
         </div>
         <AuditTrail />
       </div>
+
+      <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 }

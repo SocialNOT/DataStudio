@@ -1,0 +1,27 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Information about a registered user in Mitsara Data Studio.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique Firebase Auth UID." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "photoURL": { "type": "string", "description": "The URL to the user's profile picture." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The time the profile was created." }
+      },
+      "required": ["uid", "email"]
+    }
+  },
+  "auth": {
+    "providers": ["anonymous", "google.com"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile document storage."
+    }
+  }
+}
