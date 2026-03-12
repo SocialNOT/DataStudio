@@ -1,8 +1,6 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
 import UploadPanel from './UploadPanel';
 import ProcessingPanel from './ProcessingPanel';
@@ -15,14 +13,16 @@ import {
   Cog, 
   Eye, 
   Share2, 
-  Activity, 
   History, 
   Settings, 
   Bell, 
   Moon, 
   Sun,
   LogIn,
-  Layers
+  Layers,
+  Database,
+  Terminal,
+  Activity
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -47,10 +47,17 @@ export type ChunkMetadata = {
   domain?: string;
 };
 
+export type QaPair = {
+  instruction: string;
+  output: string;
+};
+
 export type PipelineState = {
   rawText: string;
   processedText: string;
   chunks: { text: string; metadata: ChunkMetadata }[];
+  qaPairs: QaPair[];
+  viewMode: 'chunks' | 'training';
   status: 'idle' | 'uploading' | 'processing' | 'completed' | 'error';
   fileName?: string;
   fileType?: string;
@@ -73,6 +80,8 @@ export default function StudioDashboard() {
     rawText: '',
     processedText: '',
     chunks: [],
+    qaPairs: [],
+    viewMode: 'chunks',
     status: 'idle',
     datasetName: 'Untitled Dataset',
     version: '1.0.0',
@@ -85,15 +94,7 @@ export default function StudioDashboard() {
 
   useEffect(() => {
     setMounted(true);
-    setState(prev => ({
-      ...prev,
-      logs: [{ 
-        id: 'init', 
-        timestamp: new Date(), 
-        message: 'Mitsara Engine v1.1 initialized. Ingestion core ready.', 
-        type: 'info' 
-      }]
-    }));
+    addLog('Mitsara Engine v1.2 initialized. Instruction factory ready.', 'info');
   }, []);
 
   const handleSignIn = async () => {
@@ -142,57 +143,38 @@ export default function StudioDashboard() {
     </div>
   );
 
-  const AuditTrail = () => (
-    <div className="col-span-2 border-l border-white/5 bg-card/10 flex flex-col overflow-hidden">
-      <div className="p-4 border-b border-white/5 bg-muted/10 flex items-center justify-between">
-        <h2 className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
-          <History className="h-3 w-3" /> Audit Trail
-        </h2>
-        <Badge variant="outline" className="text-[9px] font-code h-4 px-1.5 border-primary/20 text-primary">
-          {state.logs.length}
-        </Badge>
-      </div>
-      <ScrollArea className="flex-1 p-3">
-        <div className="space-y-4">
-          {state.logs.map((log) => (
-            <div key={log.id} className="group relative pl-4 border-l border-white/10 transition-colors hover:border-primary/30">
-              <div className={`absolute left-[-4.5px] top-1 h-2 w-2 rounded-full border-2 border-background shadow-sm ${
-                log.type === 'ai' ? 'bg-primary animate-pulse' : log.type === 'error' ? 'bg-destructive' : log.type === 'success' ? 'bg-green-500' : 'bg-muted-foreground'
-              }`} />
-              <p className="text-[9px] font-code text-muted-foreground/60">
-                {mounted ? log.timestamp.toLocaleTimeString() : '--:--:--'}
-              </p>
-              <p className="text-[11px] font-body leading-tight text-foreground/80 mt-1">{log.message}</p>
-            </div>
-          ))}
-        </div>
-      </ScrollArea>
-    </div>
-  );
-
   if (!mounted) return <div className="h-screen w-screen bg-background" />;
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       <header className="flex h-14 items-center justify-between border-b bg-card/50 px-6 backdrop-blur-xl shrink-0">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <div className="relative group cursor-pointer">
             <div className="absolute inset-0 animate-pulse-ring rounded-lg bg-primary/20 group-hover:bg-primary/40 transition-colors" />
             <div className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-lg shadow-primary/30 group-hover:scale-110 transition-transform">
               <BrainCircuit className="h-5 w-5" />
             </div>
           </div>
-          <div>
+          <div className="flex flex-col">
             <h1 className="font-headline text-base font-bold tracking-tight">Mitsara <span className="text-primary glow-text">Studio</span></h1>
-            <div className="flex items-center gap-2 mt-0.5 opacity-70">
-              <Layers className="h-2.5 w-2.5 text-muted-foreground" />
-              <span className="text-[9px] text-muted-foreground uppercase tracking-wider font-bold">{state.datasetName} v{state.version}</span>
+            <div className="flex items-center gap-2 mt-0.5">
+              <Layers className="h-2.5 w-2.5 text-primary/50" />
+              <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold">
+                {state.datasetName} <span className="text-primary/70">v{state.version}</span>
+              </span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-           <div className="flex items-center gap-1 bg-muted/20 p-1 rounded-lg border border-white/5 mr-4">
+        <div className="flex items-center gap-4">
+           {/* Pipeline Metrics */}
+           <div className="hidden lg:flex items-center gap-6 px-4 py-1.5 rounded-full bg-muted/10 border border-white/5">
+              <Metric label="Chunks" value={state.chunks.length} icon={<Database className="h-2.5 w-2.5" />} />
+              <Metric label="Instructions" value={state.qaPairs.length} icon={<Terminal className="h-2.5 w-2.5" />} />
+              <Metric label="Health" value="98%" icon={<Activity className="h-2.5 w-2.5" color="#10b981" />} />
+           </div>
+
+           <div className="flex items-center gap-1 bg-muted/20 p-1 rounded-lg border border-white/5">
               <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground" onClick={() => setIsDarkMode(!isDarkMode)}>
                 {isDarkMode ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
               </Button>
@@ -210,8 +192,8 @@ export default function StudioDashboard() {
            ) : user ? (
              <div className="flex items-center gap-3 pl-4 border-l border-white/5 group cursor-pointer" onClick={() => setSettingsOpen(true)}>
                <div className="text-right">
-                 <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Status</p>
-                 <p className="text-xs font-bold text-green-500">Active Node</p>
+                 <p className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Node Status</p>
+                 <p className="text-xs font-bold text-green-500">Authorized</p>
                </div>
                <div className="h-8 w-8 rounded-full border border-primary/20 bg-primary/10 flex items-center justify-center font-bold text-primary text-[10px]">
                  {user.displayName?.[0] || user.email?.[0] || 'A'}
@@ -228,26 +210,62 @@ export default function StudioDashboard() {
       <div className="grid flex-1 grid-cols-12 overflow-hidden">
         <div className="col-span-10 grid grid-cols-4 gap-px bg-white/5 overflow-hidden">
           <div className="workspace-panel bg-background/20">
-             <PanelHeader icon={<Upload className="h-3.5 w-3.5" />} title="1. Ingestion" />
+             <PanelHeader icon={<Upload className="h-3.5 w-3.5" />} title="1. Ingestion Engine" />
              <UploadPanel state={state} updateState={updateState} />
           </div>
           <div className="workspace-panel bg-background/20">
-             <PanelHeader icon={<Cog className="h-3.5 w-3.5" />} title="2. Intelligence" />
+             <PanelHeader icon={<Cog className="h-3.5 w-3.5" />} title="2. Intelligence Layer" />
              <ProcessingPanel state={state} updateState={updateState} />
           </div>
           <div className="workspace-panel bg-background/20 border-l border-white/5 col-span-1">
-             <PanelHeader icon={<Eye className="h-3.5 w-3.5" />} title="3. Curation" />
+             <PanelHeader icon={<Eye className="h-3.5 w-3.5" />} title="3. Curation Hub" />
              <PreviewPanel state={state} updateState={updateState} />
           </div>
           <div className="workspace-panel bg-background/20 border-l border-white/5">
-             <PanelHeader icon={<Share2 className="h-3.5 w-3.5" />} title="4. Delivery" />
+             <PanelHeader icon={<Share2 className="h-3.5 w-3.5" />} title="4. Deployment Vault" />
              <ExportPanel state={state} updateState={updateState} />
           </div>
         </div>
-        <AuditTrail />
+
+        {/* Persistent Audit Sidebar */}
+        <div className="col-span-2 border-l border-white/5 bg-card/10 flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-white/5 bg-muted/10 flex items-center justify-between">
+            <h2 className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+              <History className="h-3 w-3" /> Ingestion Record
+            </h2>
+            <Badge variant="outline" className="text-[9px] font-code h-4 px-1.5 border-primary/20 text-primary">
+              {state.logs.length}
+            </Badge>
+          </div>
+          <ScrollArea className="flex-1 p-3">
+            <div className="space-y-4">
+              {state.logs.map((log) => (
+                <div key={log.id} className="group relative pl-4 border-l border-white/10 transition-colors hover:border-primary/30">
+                  <div className={`absolute left-[-4.5px] top-1 h-2 w-2 rounded-full border-2 border-background shadow-sm ${
+                    log.type === 'ai' ? 'bg-primary animate-pulse' : log.type === 'error' ? 'bg-destructive' : log.type === 'success' ? 'bg-green-500' : 'bg-muted-foreground'
+                  }`} />
+                  <p className="text-[9px] font-code text-muted-foreground/60">
+                    {mounted ? log.timestamp.toLocaleTimeString() : '--:--:--'}
+                  </p>
+                  <p className="text-[11px] font-body leading-tight text-foreground/80 mt-1">{log.message}</p>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
       </div>
 
       <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
+    </div>
+  );
+}
+
+function Metric({ label, value, icon }: { label: string, value: string | number, icon: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-muted-foreground">{icon}</span>
+      <span className="text-[10px] font-bold uppercase tracking-tighter text-muted-foreground/80">{label}:</span>
+      <span className="text-[11px] font-code font-bold text-foreground">{value}</span>
     </div>
   );
 }

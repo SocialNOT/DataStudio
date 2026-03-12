@@ -6,7 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Download, Database, CloudUpload, CheckCircle2, FileJson, FileType, Table as TableIcon } from 'lucide-react';
+import { 
+  Download, 
+  Database, 
+  CloudUpload, 
+  FileJson, 
+  Table as TableIcon,
+  Globe,
+  ShieldCheck,
+  Cpu,
+  Layers,
+  Rocket
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ExportPanelProps {
@@ -21,126 +32,130 @@ export default function ExportPanel({ state, updateState }: ExportPanelProps) {
   const [dbType, setDbType] = useState('chroma');
 
   const handleDeploy = () => {
-    if (!state.chunks.length) {
-      toast({ title: "No data", description: "Process some documents before deploying.", variant: "destructive" });
+    if (!state.chunks.length && !state.qaPairs.length) {
+      toast({ title: "Vault Empty", description: "Initialize pipeline before deployment.", variant: "destructive" });
       return;
     }
 
     setDeploying(true);
     setProgress(0);
-
     const interval = setInterval(() => {
       setProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval);
           setDeploying(false);
-          toast({ title: "Deployment Successful", description: `Data synchronized with ${dbType.toUpperCase()}.` });
+          toast({ title: "Node Synchronized", description: `Data broadcasted to ${dbType.toUpperCase()} cluster.` });
           return 100;
         }
         return prev + 10;
       });
-    }, 300);
-  };
-
-  const handleDownload = (format: string) => {
-    toast({ title: "Export Started", description: `Generating ${format.toUpperCase()} dataset...` });
+    }, 400);
   };
 
   return (
     <div className="flex flex-col gap-8 p-6">
       <section className="space-y-4">
-        <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-          <Database className="h-4 w-4" /> Vector DB Deployment
-        </h3>
-        <div className="space-y-3">
-          <Label className="text-xs">Target Provider</Label>
-          <Select value={dbType} onValueChange={setDbType}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="chroma">ChromaDB (Local)</SelectItem>
-              <SelectItem value="pinecone">Pinecone (Cloud)</SelectItem>
-              <SelectItem value="weaviate">Weaviate</SelectItem>
-              <SelectItem value="qdrant">Qdrant</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex items-center justify-between">
+           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+            <Globe className="h-3.5 w-3.5" /> Vector Delivery
+          </h3>
+          <Badge variant="outline" className="h-4 text-[8px] border-accent/20 text-accent">SECURE_TUNNEL</Badge>
         </div>
+        
+        <div className="grid gap-4">
+          <div className="space-y-2">
+            <Label className="text-[9px] font-bold uppercase text-muted-foreground/80">Target Infrastructure</Label>
+            <Select value={dbType} onValueChange={setDbType}>
+              <SelectTrigger className="h-9 text-xs bg-background/40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="chroma">ChromaDB (Semantic Edge)</SelectItem>
+                <SelectItem value="pinecone">Pinecone (Cloud Hyper)</SelectItem>
+                <SelectItem value="weaviate">Weaviate Cluster</SelectItem>
+                <SelectItem value="qdrant">Qdrant Neural Engine</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div className="space-y-3 pt-2">
-           <Label className="text-xs">Embedding Model</Label>
-           <Select defaultValue="bge-large">
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="bge-large">BAAI/bge-large-en</SelectItem>
-              <SelectItem value="openai">OpenAI Text-3-Small</SelectItem>
-              <SelectItem value="instructor">Instructor-XL</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+             <Label className="text-[9px] font-bold uppercase text-muted-foreground/80">Embedding Protocol</Label>
+             <Select defaultValue="bge-large">
+              <SelectTrigger className="h-9 text-xs bg-background/40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="bge-large">BAAI/bge-large-en-v1.5</SelectItem>
+                <SelectItem value="openai">OpenAI Text-Embedding-3</SelectItem>
+                <SelectItem value="instructor">Instructor-XL (Dynamic)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {deploying && (
-          <div className="space-y-2 py-2">
-            <div className="flex justify-between text-[10px] font-medium uppercase tracking-wider">
-              <span>Syncing Vectors</span>
+          <div className="space-y-2 py-3">
+            <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest text-primary">
+              <span>Broadcasting Shards</span>
               <span>{progress}%</span>
             </div>
-            <Progress value={progress} className="h-1" />
+            <Progress value={progress} className="h-1 bg-white/5" />
           </div>
         )}
 
         <Button 
           variant="accent" 
-          className="w-full shadow-lg shadow-accent/20" 
+          className="w-full h-11 shadow-lg shadow-accent/20 group overflow-hidden" 
           onClick={handleDeploy}
-          disabled={deploying || !state.chunks.length}
+          disabled={deploying || (!state.chunks.length && !state.qaPairs.length)}
         >
-          {deploying ? <CloudUpload className="mr-2 h-4 w-4 animate-bounce" /> : <Database className="mr-2 h-4 w-4" />}
-          {deploying ? 'Pushing Data...' : 'Push to Vector DB'}
+          <div className="flex items-center justify-center gap-2 relative">
+            <CloudUpload className={`h-4 w-4 ${deploying ? 'animate-bounce' : 'group-hover:-translate-y-1 transition-transform'}`} />
+            <span className="text-[10px] font-black uppercase tracking-widest">Broadcast to Vault</span>
+          </div>
         </Button>
       </section>
 
-      <div className="h-px bg-border/50" />
+      <div className="h-px bg-white/5" />
 
       <section className="space-y-4">
-        <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-          <Download className="h-4 w-4" /> Dataset Export
+        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+          <Layers className="h-3.5 w-3.5" /> Training Formats
         </h3>
         <div className="grid grid-cols-1 gap-2">
-          <Button variant="outline" className="justify-start gap-3 h-11" onClick={() => handleDownload('jsonl')}>
-            <FileJson className="h-4 w-4 text-orange-500" />
-            <div className="text-left">
-              <div className="text-xs font-bold">JSONL Format</div>
-              <div className="text-[10px] text-muted-foreground">Standard RAG interchange</div>
-            </div>
-          </Button>
-          <Button variant="outline" className="justify-start gap-3 h-11" onClick={() => handleDownload('hf')}>
-             <div className="h-4 w-4 flex items-center justify-center font-bold text-yellow-500">🤗</div>
-            <div className="text-left">
-              <div className="text-xs font-bold">HuggingFace</div>
-              <div className="text-[10px] text-muted-foreground">Parquet dataset shards</div>
-            </div>
-          </Button>
-          <Button variant="outline" className="justify-start gap-3 h-11" onClick={() => handleDownload('csv')}>
-            <TableIcon className="h-4 w-4 text-green-500" />
-            <div className="text-left">
-              <div className="text-xs font-bold">CSV / Sheets</div>
-              <div className="text-[10px] text-muted-foreground">Tabular review file</div>
-            </div>
-          </Button>
+          <ExportButton icon={<FileJson className="h-4 w-4 text-orange-400" />} label="Llama-3 Alpaca" sub="Instructional JSONL" />
+          <ExportButton icon={<Cpu className="h-4 w-4 text-yellow-400" />} label="ShareGPT v4" sub="Conversational Multi-turn" />
+          <ExportButton icon={<Rocket className="h-4 w-4 text-green-400" />} label="HuggingFace Shards" sub="Parquet / HF Datasets" />
+          <ExportButton icon={<TableIcon className="h-4 w-4 text-blue-400" />} label="Tabular Review" sub="CSV / Excel Ingestion" />
         </div>
       </section>
 
-      <div className="mt-auto space-y-4">
-        <div className="flex items-center gap-3 rounded-xl bg-green-500/5 p-4 border border-green-500/10">
-          <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
-          <p className="text-[10px] text-muted-foreground font-medium leading-relaxed">
-            All datasets created via Mitsara Data Studio follow the <span className="text-green-500 font-bold">IKS-01 Standard</span> for civilizational knowledge preservation.
+      <div className="mt-auto p-4 rounded-xl bg-primary/5 border border-primary/10 flex items-start gap-3">
+        <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+        <div>
+          <p className="text-[9px] font-black text-primary uppercase tracking-[0.2em]">Validation Active</p>
+          <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
+            Every shard generated follows the <span className="text-primary font-bold">Mitsara IKS Protocol</span> for civilizational data preservation.
           </p>
         </div>
       </div>
     </div>
+  );
+}
+
+function ExportButton({ icon, label, sub }: { icon: React.ReactNode, label: string, sub: string }) {
+  const { toast } = useToast();
+  return (
+    <Button 
+      variant="outline" 
+      className="justify-start gap-3 h-12 bg-muted/5 border-white/5 hover:border-white/20 hover:bg-muted/10 transition-all"
+      onClick={() => toast({ title: "Export Initialized", description: `Generating ${label} package...` })}
+    >
+      <div className="p-1.5 rounded bg-muted/20">{icon}</div>
+      <div className="text-left">
+        <div className="text-[11px] font-black uppercase tracking-widest leading-none">{label}</div>
+        <div className="text-[9px] text-muted-foreground mt-1 uppercase tracking-tighter opacity-60">{sub}</div>
+      </div>
+    </Button>
   );
 }
