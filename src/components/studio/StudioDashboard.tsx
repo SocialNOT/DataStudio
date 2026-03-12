@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
 import UploadPanel from './UploadPanel';
 import ProcessingPanel from './ProcessingPanel';
 import PreviewPanel from './PreviewPanel';
 import ExportPanel from './ExportPanel';
-import { BrainCircuit, Upload, Cog, Eye, Share2, Activity, History, ChevronRight, LayoutPanelLeft } from 'lucide-react';
+import { BrainCircuit, Upload, Cog, Eye, Share2, Activity, History } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
@@ -35,31 +35,28 @@ export default function StudioDashboard() {
     processedText: '',
     chunks: [],
     status: 'idle',
-    logs: [{ id: '1', timestamp: new Date(), message: 'System initialized. Ready for ingestion.', type: 'info' }],
+    logs: [{ id: '1', timestamp: new Date(), message: 'System initialized. Knowledge Ingestion Engine online.', type: 'info' }],
   });
 
   const updateState = (updates: Partial<PipelineState>) => {
     setState((prev) => {
       const newState = { ...prev, ...updates };
+      
+      // Automatic logging for status changes
       if (updates.status && updates.status !== prev.status) {
+        const statusMsg = `Pipeline status transitioned to: ${updates.status.toUpperCase()}`;
         newState.logs = [
-          { id: Math.random().toString(), timestamp: new Date(), message: `Pipeline status changed to: ${updates.status}`, type: 'info' },
+          { id: Math.random().toString(), timestamp: new Date(), message: statusMsg, type: updates.status === 'error' ? 'error' : 'info' },
           ...prev.logs
         ];
       }
+      
       return newState;
     });
   };
 
-  const addLog = (message: string, type: LogEntry['type'] = 'info') => {
-    setState(prev => ({
-      ...prev,
-      logs: [{ id: Math.random().toString(), timestamp: new Date(), message, type }, ...prev.logs]
-    }));
-  };
-
   const DesktopLayout = () => (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="flex h-screen flex-col overflow-hidden bg-background">
       <header className="flex h-14 items-center justify-between border-b bg-card/50 px-6 backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -70,58 +67,61 @@ export default function StudioDashboard() {
           </div>
           <div>
             <h1 className="font-headline text-base font-bold tracking-tight">Mitsara <span className="text-primary glow-text">Studio</span></h1>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-medium opacity-70">Knowledge Ingestion Engine</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-medium opacity-70">Ingestion Command Center</p>
           </div>
         </div>
 
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-4 border-l pl-6">
+          <div className="flex items-center gap-4 border-l border-white/5 pl-6">
             <div className="text-right">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase">Session Recording</p>
-              <p className="text-xs font-code text-primary leading-none">ACTIVE_INGEST_01</p>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase">Session State</p>
+              <p className="text-xs font-code text-primary leading-none">RECORDING_INGEST_01</p>
             </div>
-            <Activity className="h-4 w-4 text-green-500 animate-pulse" />
+            <div className="relative">
+               <div className="absolute inset-0 bg-green-500/20 blur-sm rounded-full animate-pulse" />
+               <Activity className="h-4 w-4 text-green-500 relative" />
+            </div>
           </div>
         </div>
       </header>
 
       <div className="grid flex-1 grid-cols-12 overflow-hidden">
-        {/* Main Workspace */}
-        <div className="col-span-10 grid grid-cols-4 gap-px bg-border/40">
-          <div className="workspace-panel bg-background/40">
+        {/* Main Workspace Panels */}
+        <div className="col-span-10 grid grid-cols-4 gap-px bg-white/5 overflow-hidden">
+          <div className="workspace-panel bg-background/20">
              <PanelHeader icon={<Upload className="h-3.5 w-3.5" />} title="1. Source" />
              <UploadPanel state={state} updateState={updateState} />
           </div>
-          <div className="workspace-panel bg-background/40 border-l">
+          <div className="workspace-panel bg-background/20">
              <PanelHeader icon={<Cog className="h-3.5 w-3.5" />} title="2. Process" />
              <ProcessingPanel state={state} updateState={updateState} />
           </div>
-          <div className="workspace-panel bg-background/40 border-l col-span-1">
+          <div className="workspace-panel bg-background/20 border-l border-white/5 col-span-1">
              <PanelHeader icon={<Eye className="h-3.5 w-3.5" />} title="3. Editor" />
              <PreviewPanel state={state} updateState={updateState} />
           </div>
-          <div className="workspace-panel bg-background/40 border-l">
+          <div className="workspace-panel bg-background/20 border-l border-white/5">
              <PanelHeader icon={<Share2 className="h-3.5 w-3.5" />} title="4. Deploy" />
              <ExportPanel state={state} updateState={updateState} />
           </div>
         </div>
 
-        {/* Audit Log / History Sidebar */}
-        <div className="col-span-2 border-l bg-card/20 flex flex-col overflow-hidden">
-          <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
+        {/* Audit Log / Session Recording Sidebar */}
+        <div className="col-span-2 border-l border-white/5 bg-card/10 flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-white/5 bg-muted/10 flex items-center justify-between">
             <h2 className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
-              <History className="h-3 w-3" /> Audit Log
+              <History className="h-3 w-3" /> Audit Trail
             </h2>
-            <Badge variant="outline" className="text-[9px] font-code h-4 px-1.5">{state.logs.length}</Badge>
+            <Badge variant="outline" className="text-[9px] font-code h-4 px-1.5 border-primary/20 text-primary">{state.logs.length}</Badge>
           </div>
           <ScrollArea className="flex-1 p-3">
             <div className="space-y-4">
               {state.logs.map((log) => (
-                <div key={log.id} className="group relative pl-4 border-l border-border/50">
-                  <div className={`absolute left-[-4.5px] top-1 h-2 w-2 rounded-full border-2 border-background ${
-                    log.type === 'ai' ? 'bg-primary' : log.type === 'error' ? 'bg-destructive' : log.type === 'success' ? 'bg-green-500' : 'bg-muted-foreground'
+                <div key={log.id} className="group relative pl-4 border-l border-white/10 transition-colors hover:border-primary/30">
+                  <div className={`absolute left-[-4.5px] top-1 h-2 w-2 rounded-full border-2 border-background shadow-sm ${
+                    log.type === 'ai' ? 'bg-primary animate-pulse' : log.type === 'error' ? 'bg-destructive' : log.type === 'success' ? 'bg-green-500' : 'bg-muted-foreground'
                   }`} />
-                  <p className="text-[9px] font-code text-muted-foreground">{log.timestamp.toLocaleTimeString()}</p>
+                  <p className="text-[9px] font-code text-muted-foreground/60">{log.timestamp.toLocaleTimeString()}</p>
                   <p className="text-[11px] font-body leading-tight text-foreground/80 mt-1">{log.message}</p>
                 </div>
               ))}
@@ -133,9 +133,9 @@ export default function StudioDashboard() {
   );
 
   const PanelHeader = ({ icon, title }: { icon: React.ReactNode, title: string }) => (
-    <div className="h-10 border-b bg-muted/10 flex items-center gap-2 px-4 shrink-0">
-      <span className="text-primary">{icon}</span>
-      <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">{title}</h2>
+    <div className="h-10 border-b border-white/5 bg-muted/5 flex items-center gap-2 px-4 shrink-0">
+      <span className="text-primary/70">{icon}</span>
+      <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80">{title}</h2>
     </div>
   );
 
