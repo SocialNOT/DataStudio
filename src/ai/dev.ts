@@ -1,1 +1,6 @@
-// Flows will be imported for their side effects in this file.
+import { config } from 'dotenv';
+config();
+
+import '@/ai/flows/ai-powered-document-cleaning.ts';
+import '@/ai/flows/multilingual-ai-powered-ocr.ts';
+import '@/ai/flows/automated-chunking-and-metadata-generation.ts';
