@@ -155,7 +155,12 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
                     <div className="space-y-2">
                        <Label className="text-[10px] font-bold uppercase text-orange-500/70">Google Gemini API Key</Label>
                        <div className="flex gap-2">
-                         <Input type="password" value="********************************" className="font-code text-xs bg-background/50 border-orange-500/10" />
+                         <Input 
+                            type="password" 
+                            value="********************************" 
+                            readOnly
+                            className="font-code text-xs bg-background/50 border-orange-500/10 cursor-default focus-visible:ring-0" 
+                         />
                          <Button variant="outline" className="border-orange-500/20 text-orange-500 hover:bg-orange-500/10">Rotate</Button>
                        </div>
                     </div>
