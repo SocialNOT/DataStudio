@@ -121,12 +121,21 @@ export default function ProcessingPanel({ state, updateState }: ProcessingPanelP
         addPipelineLog(`Initializing ${state.embeddingModel} vector engine...`, "ai");
         addPipelineLog(`Generated ${chunks.length} embeddings.`, "success");
       }
+
+      // Feature 15: Quality Evaluation Simulation
+      const qualityMetrics = {
+        duplicationRate: Math.random() * 0.05,
+        avgTokenDensity: options.chunkSize * 0.9,
+        conceptCoverage: Math.min(0.95, (chunks.length * 0.1)),
+        semanticCoherence: 0.85 + (Math.random() * 0.1),
+      };
       
       updateState({ 
         processedText: currentText,
         chunks: chunks,
         qaPairs: qaPairs,
         graph: graph,
+        qualityMetrics: qualityMetrics,
         status: 'completed' 
       });
 

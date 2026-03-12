@@ -25,7 +25,8 @@ import {
   Terminal,
   Activity,
   Cloud,
-  Network
+  Network,
+  ShieldCheck
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -64,6 +65,13 @@ export type GraphData = {
   edges: { source: string; target: string; relation: string }[];
 };
 
+export type QualityMetrics = {
+  duplicationRate: number;
+  avgTokenDensity: number;
+  conceptCoverage: number;
+  semanticCoherence: number;
+};
+
 export type PipelineState = {
   datasetId: string;
   rawText: string;
@@ -71,7 +79,7 @@ export type PipelineState = {
   chunks: { text: string; metadata: ChunkMetadata }[];
   qaPairs: QaPair[];
   graph: GraphData;
-  viewMode: 'chunks' | 'training' | 'graph';
+  viewMode: 'chunks' | 'training' | 'graph' | 'metrics';
   status: 'idle' | 'uploading' | 'processing' | 'completed' | 'error';
   fileName?: string;
   fileType?: string;
@@ -80,6 +88,7 @@ export type PipelineState = {
   globalMetadata: Partial<ChunkMetadata>;
   logs: LogEntry[];
   embeddingModel: string;
+  qualityMetrics: QualityMetrics;
 };
 
 export default function StudioDashboard() {
@@ -110,6 +119,12 @@ export default function StudioDashboard() {
     },
     logs: [],
     embeddingModel: 'bge-large-en-v1.5',
+    qualityMetrics: {
+      duplicationRate: 0,
+      avgTokenDensity: 0,
+      conceptCoverage: 0,
+      semanticCoherence: 0,
+    },
   });
 
   useEffect(() => {
@@ -238,7 +253,7 @@ export default function StudioDashboard() {
            <div className="hidden lg:flex items-center gap-6 px-4 py-1.5 rounded-full bg-muted/10 border border-white/5">
               <Metric label="Chunks" value={state.chunks.length} icon={<Database className="h-2.5 w-2.5" />} />
               <Metric label="Instructions" value={state.qaPairs.length} icon={<Terminal className="h-2.5 w-2.5" />} />
-              <Metric label="Health" value="98%" icon={<Activity className="h-2.5 w-2.5" color="#10b981" />} />
+              <Metric label="Health" value={state.chunks.length > 0 ? `${Math.round(state.qualityMetrics.semanticCoherence * 100)}%` : '0%'} icon={<Activity className="h-2.5 w-2.5" color="#10b981" />} />
            </div>
 
            <div className="flex items-center gap-1 bg-muted/20 p-1 rounded-lg border border-white/5">
